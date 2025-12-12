@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مسابقة صل لتصل | مدرسة بلال بن رباح</title>
+    
+    <!-- مكتبة التصميم Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- مكتبة الأيقونات FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- مكتبات React و ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- مكتبة Babel لتحويل كود JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- مكتبات Firebase (إصدار التوافق - Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* خط تجريبي جميل للعربية */
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #fed7aa; /* orange-200 */
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #fb923c; /* orange-400 */
+        }
+        @keyframes blob {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+            animation: blob 7s infinite;
+        }
+        .animation-delay-2000 {
+            animation-delay: 2s;
+        }
+        .animation-delay-4000 {
+            animation-delay: 4s;
+        }
+        .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-scaleIn {
+            animation: scaleIn 0.3s ease-out;
+        }
+        @keyframes scaleIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-shake {
+            animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+        }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+</head>
+<body class="bg-orange-50 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // ==========================================
+        //  إعدادات قاعدة البيانات (Firebase Config)
+        // ==========================================
+        
+        let firebaseConfig;
+        
+        // 1. محاولة استخدام الإعدادات من بيئة المعاينة (لتعمل معك الآن)
+        if (typeof __firebase_config !== 'undefined') {
+            firebaseConfig = JSON.parse(__firebase_config);
+        } else {
+            // 2. عند تنزيل الملف، يجب عليك استبدال هذا الجزء ببياناتك الحقيقية
+            firebaseConfig = {
+                apiKey: "YOUR_API_KEY_HERE",
+                authDomain: "YOUR_PROJECT.firebaseapp.com",
+                projectId: "YOUR_PROJECT_ID",
+                storageBucket: "YOUR_PROJECT.appspot.com",
+                messagingSenderId: "YOUR_SENDER_ID",
+                appId: "YOUR_APP_ID"
+            };
+        }
+
+        // تهيئة Firebase
+        let db, auth;
+        let isConfigured = false;
+
+        try {
+            if (firebaseConfig && firebaseConfig.apiKey !== "YOUR_API_KEY_HERE" && typeof firebase !== 'undefined') {
+                if (!firebase.apps.length) {
+                    firebase.initializeApp(firebaseConfig);
+                }
+                auth = firebase.auth();
+                db = firebase.firestore();
+                isConfigured = true;
+            } else {
+                console.warn("تنبيه: لم يتم وضع إعدادات Firebase بشكل صحيح. التطبيق سيعمل في وضع غير متصل.");
+            }
+        } catch (e) {
+            console.error("Firebase Init Error:", e);
+        }
+
+        // معرف التطبيق (للمعاينة)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'school-contest-app';
+
+        const { useState, useEffect } = React;
+
+        // --- الثوابت ---
+        const ARABIC_CHARS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي";
+        const GRID_SIZE = 12;
+        const ADMIN_PASSWORD = "akm1983";
+        const DEFAULT_QUESTIONS = [
+            { question: "عاصمة سلطنة عمان", answer: "مسقط" },
+            { question: "يحد السلطنة من الغرب", answer: "السعودية" },
+        ];
+        
+        // --- المكون الرئيسي ---
+        function App() {
+            const [user, setUser] = useState(null);
+            const [gameState, setGameState] = useState('loading');
+            
+            // البيانات
+            const [questions, setQuestions] = useState([]);
+            const [schools, setSchools] = useState([]);
+            
+            // اللعب
+            const [currentSchoolId, setCurrentSchoolId] = useState(null);
+            const [grid, setGrid] = useState([]);
+            const [solvedQuestions, setSolvedQuestions] = useState([]);
+            const [solvedCells, setSolvedCells] = useState([]);
+            const [selection, setSelection] = useState({ start: null, current: null, active: false });
+            const [score, setScore] = useState(0);
+
+            // النوافذ والتحكم
+            const [showPasswordModal, setShowPasswordModal] = useState(false);
+            const [showExitConfirm, setShowExitConfirm] = useState(false);
+            const [passwordInput, setPasswordInput] = useState('');
+            const [loginError, setLoginError] = useState(false);
+            const [showImportModal, setShowImportModal] = useState(false);
+            const [importText, setImportText] = useState('');
+            const [adminTab, setAdminTab] = useState('questions');
+            const [isConnected, setIsConnected] = useState(false);
+
+            // 1. الاتصال والمصادقة
+            useEffect(() => {
+                if (!auth) {
+                    setTimeout(() => setGameState('welcome'), 1000);
+                    return;
+                }
+                
+                const unsubscribe = auth.onAuthStateChanged((u) => {
+                    setUser(u);
+                    setIsConnected(!!u);
+                    if (u && gameState === 'loading') setGameState('welcome');
+                });
+
+                // التعامل مع التوكن المخصص (للمعاينة) أو الدخول المجهول (للتشغيل المحلي)
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    auth.signInWithCustomToken(__initial_auth_token).catch(e => console.error("Custom Auth Error", e));
+                } else {
+                    auth.signInAnonymously().catch((error) => console.error("Anon Auth Error:", error));
+                }
+                
+                return () => unsubscribe();
+            }, []);
+
+            // 2. جلب البيانات
+            useEffect(() => {
+                if (!db || !user) {
+                    if (!db) {
+                        setQuestions(DEFAULT_QUESTIONS);
+                        if (gameState === 'loading') setGameState('welcome');
+                    }
+                    return;
+                }
+
+                // المسار في Firestore - استخدام مسار ثابت لضمان عمل القواعد
+                // في المعاينة نستخدم __app_id، في التشغيل المحلي نستخدم معرف ثابت
+                const basePath = `artifacts/${appId}/public/data`;
+
+                // جلب الأسئلة
+                const unsubQ = db.collection(basePath + '/questions').onSnapshot(snapshot => {
+                    if(snapshot.empty && questions.length === 0) {
+                       // إذا كانت القاعدة فارغة، لا تفعل شيئاً (ستبقى فارغة)
+                    } else {
+                       const qList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                       setQuestions(qList);
+                    }
+                }, err => console.log("Q Error", err));
+
+                // جلب المدارس
+                const unsubS = db.collection(basePath + '/schools').onSnapshot(snapshot => {
+                    const sList = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+                    setSchools(sList);
+                }, err => console.log("S Error", err));
+
+                return () => { unsubQ(); unsubS(); };
+            }, [user]);
+
+            // --- دوال قاعدة البيانات ---
+            const getCollection = (name) => {
+                if(!db) return null;
+                return db.collection(`artifacts/${appId}/public/data/${name}`);
+            };
+
+            const addQuestionToDB = (q, a) => {
+                const coll = getCollection('questions');
+                if(coll) coll.add({ question: q, answer: a, createdAt: Date.now() });
+                else setQuestions([...questions, { id: Date.now(), question: q, answer: a }]);
+            };
+
+            const deleteQuestionFromDB = (id) => {
+                const coll = getCollection('questions');
+                if(coll) coll.doc(id).delete();
+                else setQuestions(questions.filter(q => q.id !== id));
+            };
+
+            const addSchoolToDB = (name, password) => {
+                const coll = getCollection('schools');
+                if(coll) coll.add({ name, password, score: 0, solvedCount: 0, completed: false, lastActive: Date.now() });
+                else setSchools([...schools, { id: Date.now(), name, password, score: 0, solvedCount: 0 }]);
+            };
+
+            const deleteSchoolFromDB = (id) => {
+                const coll = getCollection('schools');
+                if(coll) coll.doc(id).delete();
+                else setSchools(schools.filter(s => s.id !== id));
+            };
+
+            const resetAllSchools = () => {
+                const coll = getCollection('schools');
+                if(coll && schools.length) {
+                    schools.forEach(s => {
+                        coll.doc(s.id).update({ score: 0, solvedCount: 0, completed: false });
+                    });
+                } else if (!coll) {
+                    setSchools(schools.map(s => ({...s, score: 0, solvedCount: 0, completed: false})));
+                }
+            };
+
+            const updateSchoolProgress = (newScore, newSolvedCount, isCompleted, activeId = currentSchoolId) => {
+                const coll = getCollection('schools');
+                if (!coll || !activeId) return;
+                coll.doc(activeId).update({
+                    score: newScore,
+                    solvedCount: newSolvedCount,
+                    completed: isCompleted,
+                    lastActive: Date.now()
+                }).catch(err => console.log("Update Error", err));
+            };
+
+            // --- منطق اللعبة ---
+            const handleStartPlaying = (schoolId) => {
+                setCurrentSchoolId(schoolId);
+                setGameState('playing');
+                generateGrid(schoolId);
+            };
+
+            const generateGrid = (activeSchoolId = currentSchoolId) => {
+                const activeQuestions = questions.length > 0 ? questions : DEFAULT_QUESTIONS;
+                let newGrid = Array(GRID_SIZE * GRID_SIZE).fill({ char: '', id: '' });
+                const getIndex = (x, y) => y * GRID_SIZE + x;
+                
+                const shuffledQuestions = [...activeQuestions].sort(() => 0.5 - Math.random());
+
+                shuffledQuestions.forEach((q) => {
+                    let cleanAnswer = q.answer.replace(/\s/g, '');
+                    if (cleanAnswer.length > GRID_SIZE) return;
+                    let placed = false, attempts = 0;
+                    while (!placed && attempts < 150) {
+                        const direction = Math.floor(Math.random() * 3); 
+                        const startX = Math.floor(Math.random() * GRID_SIZE);
+                        const startY = Math.floor(Math.random() * GRID_SIZE);
+                        let fits = true, indices = [];
+                        for (let i = 0; i < cleanAnswer.length; i++) {
+                            let x = startX, y = startY;
+                            if (direction === 0) x += i;
+                            if (direction === 1) y += i;
+                            if (direction === 2) { x += i; y += i; }
+                            if (x >= GRID_SIZE || y >= GRID_SIZE) { fits = false; break; }
+                            const idx = getIndex(x, y);
+                            if (newGrid[idx].char !== '' && newGrid[idx].char !== cleanAnswer[i]) { fits = false; break; }
+                            indices.push(idx);
+                        }
+                        if (fits) {
+                            indices.forEach((idx, i) => { newGrid[idx] = { char: cleanAnswer[i], id: `cell-${idx}` }; });
+                            placed = true;
+                        }
+                        attempts++;
+                    }
+                });
+
+                newGrid = newGrid.map((cell, idx) => {
+                    if (cell.char === '') return { char: ARABIC_CHARS[Math.floor(Math.random() * ARABIC_CHARS.length)], id: `rand-${idx}` };
+                    return cell;
+                });
+
+                setGrid(newGrid);
+                setSolvedQuestions([]);
+                setSolvedCells([]);
+                setScore(0);
+                setSelection({ start: null, current: null, active: false });
+                updateSchoolProgress(0, 0, false, activeSchoolId);
+            };
+
+            const getLineIndices = (start, end) => {
+                const startX = start % GRID_SIZE;
+                const startY = Math.floor(start / GRID_SIZE);
+                const endX = end % GRID_SIZE;
+                const endY = Math.floor(end / GRID_SIZE);
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const steps = Math.max(Math.abs(dx), Math.abs(dy));
+                if (steps === 0) return [start];
+                if (startX !== endX && startY !== endY && Math.abs(dx) !== Math.abs(dy)) return [];
+                const indices = [];
+                const xInc = dx / steps;
+                const yInc = dy / steps;
+                for (let i = 0; i <= steps; i++) {
+                    const x = Math.round(startX + xInc * i);
+                    const y = Math.round(startY + yInc * i);
+                    indices.push(y * GRID_SIZE + x);
+                }
+                return indices;
+            };
+
+            const handleMouseDown = (index) => setSelection({ start: index, current: index, active: true });
+            const handleMouseEnter = (index) => selection.active && setSelection(prev => ({ ...prev, current: index }));
+            const handleMouseUp = () => {
+                if (!selection.active) return;
+                const selectedIndices = getLineIndices(selection.start, selection.current);
+                if (selectedIndices.length > 0) {
+                    const selectedWord = selectedIndices.map(idx => grid[idx].char).join('');
+                    checkWord(selectedWord, selectedIndices);
+                }
+                setSelection({ start: null, current: null, active: false });
+            };
+
+            const checkWord = (word, indices) => {
+                const reversedWord = word.split('').reverse().join('');
+                const foundQ = questions.find(q => {
+                    const cleanAns = q.answer.replace(/\s/g, '');
+                    return (cleanAns === word || cleanAns === reversedWord) && !solvedQuestions.includes(q.id);
+                });
+
+                if (foundQ) {
+                    const newSolved = [...solvedQuestions, foundQ.id];
+                    setSolvedQuestions(newSolved);
+                    setSolvedCells(prev => [...prev, ...indices]);
+                    const newScore = score + 10;
+                    setScore(newScore);
+                    const isCompleted = newSolved.length === questions.length;
+                    updateSchoolProgress(newScore, newSolved.length, isCompleted);
+                    if (isCompleted) setTimeout(() => setGameState('result'), 1500);
+                }
+            };
+
+            const isSelected = (index) => {
+                if (!selection.active || selection.start === null) return false;
+                return getLineIndices(selection.start, selection.current).includes(index);
+            };
+
+            // --- الشاشات ---
+            const WelcomeScreen = () => (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn relative min-h-screen">
+                    <div className="absolute top-4 right-4">
+                        {isConnected ? 
+                            <span className="flex items-center gap-1 text-green-600 text-xs font-bold bg-green-100 px-2 py-1 rounded-full"><i className="fas fa-wifi"></i> متصل</span> : 
+                            <span className="flex items-center gap-1 text-red-600 text-xs font-bold bg-red-100 px-2 py-1 rounded-full"><i className="fas fa-ban"></i> غير متصل</span>
+                        }
+                    </div>
+                    <div className="bg-white/90 p-8 rounded-3xl shadow-2xl max-w-2xl w-full border-4 border-orange-500 relative z-10">
+                        <i className="fas fa-school text-6xl text-orange-600 mb-4 block"></i>
+                        <h1 className="text-4xl md:text-5xl font-extrabold text-orange-700 mb-2">مسابقة صِل لتصل</h1>
+                        <h2 className="text-2xl font-bold text-orange-800 mb-2">قسم الدراسات الاجتماعية</h2>
+                        <h3 className="text-xl text-gray-600 mb-8">مدرسة بلال بن رباح</h3>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                            <button onClick={() => setGameState('select_school')} className="bg-orange-600 text-white p-6 rounded-xl text-xl font-bold hover:bg-orange-700 transition shadow-lg flex flex-col items-center gap-3 transform hover:scale-105">
+                                <i className="fas fa-user-graduate text-3xl"></i>
+                                <span>دخول مدرسة (طالب)</span>
+                                <span className="text-xs font-normal opacity-80">أدخل الرمز السري لمدرستك</span>
+                            </button>
+                            <button onClick={() => setShowPasswordModal(true)} className="bg-white text-orange-800 border-2 border-orange-200 p-6 rounded-xl text-xl font-bold hover:bg-orange-50 transition shadow-lg flex flex-col items-center gap-3 transform hover:scale-105">
+                                <i className="fas fa-cog text-3xl"></i>
+                                <span>لوحة التحكم (معلم)</span>
+                                <span className="text-xs font-normal opacity-70">إدارة الأسئلة والنتائج</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div className="fixed top-20 left-10 w-32 h-32 bg-yellow-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob"></div>
+                    <div className="fixed top-40 right-10 w-32 h-32 bg-purple-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000"></div>
+                    <div className="fixed -bottom-8 left-20 w-32 h-32 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000"></div>
+                </div>
+            );
+
+            const SelectSchoolScreen = () => {
+                const [enteredCode, setEnteredCode] = useState('');
+                const [error, setError] = useState(false);
+                const handleLogin = (e) => {
+                    e.preventDefault();
+                    // إذا لم تكن هناك بيانات مدارس (غير متصل)، اسمح بالدخول بأي رمز للتجربة
+                    if (!isConnected && schools.length === 0) {
+                        alert("أنت في وضع غير متصل. سيتم بدء اللعبة بوضع تجريبي.");
+                        handleStartPlaying('demo-school');
+                        return;
+                    }
+                    const foundSchool = schools.find(s => s.password === enteredCode);
+                    if (foundSchool) handleStartPlaying(foundSchool.id);
+                    else setError(true);
+                };
+                return (
+                    <div className="flex flex-col items-center justify-center h-full p-4 min-h-screen">
+                        <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border-4 border-orange-100 relative z-10">
+                            <button onClick={() => setGameState('welcome')} className="mb-6 text-orange-600 flex items-center gap-2 font-bold hover:underline">
+                                <i className="fas fa-arrow-right"></i> عودة للرئيسية
+                            </button>
+                            <div className="flex justify-center mb-6"><div className="p-4 bg-orange-100 rounded-full"><i className="fas fa-lock text-3xl text-orange-600"></i></div></div>
+                            <h2 className="text-3xl font-bold text-center text-gray-800 mb-2">تسجيل الدخول</h2>
+                            <p className="text-center text-gray-500 mb-8">أدخل الرمز السري الخاص بمدرستك</p>
+                            <form onSubmit={handleLogin}>
+                                <div className="relative mb-6">
+                                    <input type="password" autoFocus value={enteredCode} onChange={(e) => {setEnteredCode(e.target.value); setError(false);}} placeholder="الرمز السري" className="w-full p-4 border-2 border-gray-200 rounded-xl text-center text-2xl tracking-widest focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300 placeholder:text-lg placeholder:tracking-normal" />
+                                    <i className="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-gray-400"></i>
+                                </div>
+                                {error && <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-6 flex items-center justify-center gap-2 font-bold animate-shake"><i className="fas fa-exclamation-triangle"></i><span>الرمز السري غير صحيح</span></div>}
+                                <button type="submit" className="w-full bg-orange-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-orange-700 transition shadow-lg transform active:scale-95">دخول</button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            };
+
+            const AdminScreen = () => {
+                const [newQ, setNewQ] = useState('');
+                const [newA, setNewA] = useState('');
+                const [newSchoolName, setNewSchoolName] = useState('');
+                const [newSchoolPassword, setNewSchoolPassword] = useState('');
+                
+                const handleImportExcel = () => {
+                    if (!importText.trim()) return;
+                    const rows = importText.trim().split('\n');
+                    rows.forEach(row => {
+                        let parts = row.split('\t');
+                        if (parts.length < 2) parts = row.split(',');
+                        if (parts.length >= 2) addQuestionToDB(parts[0].trim(), parts[1].trim());
+                    });
+                    setShowImportModal(false); setImportText('');
+                };
+
+                return (
+                    <div className="flex flex-col h-screen bg-orange-50 p-4">
+                        {showImportModal && (
+                            <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
+                                <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-lg">
+                                    <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-green-700"><i className="fas fa-file-csv"></i> استيراد أسئلة</h3>
+                                    <textarea value={importText} onChange={(e) => setImportText(e.target.value)} className="w-full h-40 p-3 border border-gray-300 rounded-lg bg-gray-50 text-sm font-mono focus:ring-2 focus:ring-green-500 outline-none" placeholder={`السؤال\tالاجابة\nسؤال ثاني\tاجابة`}></textarea>
+                                    <div className="flex gap-3 mt-4">
+                                        <button onClick={handleImportExcel} className="flex-1 bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700">إضافة</button>
+                                        <button onClick={() => setShowImportModal(false)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold hover:bg-gray-300">إلغاء</button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        <div className="max-w-6xl mx-auto w-full flex flex-col h-full">
+                            <div className="flex flex-col md:flex-row justify-between items-center mb-4 bg-white p-4 rounded-xl shadow-sm border-t-4 border-orange-600 gap-4">
+                                <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2"><i className="fas fa-cog text-orange-600"></i> غرفة التحكم</h2>
+                                <div className="flex gap-2">
+                                    <button onClick={() => setGameState('leaderboard')} className="flex items-center gap-2 text-white bg-green-600 hover:bg-green-700 font-bold px-6 py-2 rounded-lg transition shadow-md"><i className="fas fa-chart-bar"></i> النتائج المباشرة</button>
+                                    <button onClick={() => setGameState('welcome')} className="flex items-center gap-2 text-gray-600 bg-gray-100 hover:bg-gray-200 font-bold px-4 py-2 rounded-lg transition"><i className="fas fa-sign-out-alt"></i> خروج</button>
+                                </div>
+                            </div>
+                            <div className="flex gap-2 mb-4 bg-white p-1 rounded-lg shadow-sm w-fit mx-auto md:mx-0">
+                                <button onClick={() => setAdminTab('questions')} className={`px-6 py-2 rounded-md font-bold transition ${adminTab === 'questions' ? 'bg-orange-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>بنك الأسئلة</button>
+                                <button onClick={() => setAdminTab('schools')} className={`px-6 py-2 rounded-md font-bold transition ${adminTab === 'schools' ? 'bg-orange-600 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>المدارس</button>
+                            </div>
+                            <div className="flex-1 overflow-hidden bg-white rounded-xl shadow-md p-6">
+                                {adminTab === 'questions' ? (
+                                    <div className="flex flex-col lg:flex-row gap-6 h-full">
+                                        <div className="lg:w-1/3 space-y-4">
+                                            <h3 className="font-bold text-lg text-orange-700 border-b pb-2">إضافة سؤال</h3>
+                                            <form onSubmit={(e) => { e.preventDefault(); if(newQ && newA) { addQuestionToDB(newQ, newA); setNewQ(''); setNewA(''); } }} className="space-y-3">
+                                                <input type="text" value={newQ} onChange={(e) => setNewQ(e.target.value)} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="السؤال" />
+                                                <input type="text" value={newA} onChange={(e) => setNewA(e.target.value)} maxLength={10} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="الإجابة" />
+                                                <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 flex justify-center items-center gap-2"><i className="fas fa-plus"></i> حفظ</button>
+                                            </form>
+                                            <button onClick={() => setShowImportModal(true)} className="w-full bg-green-50 text-green-700 border border-green-200 py-3 rounded-lg font-bold hover:bg-green-100 flex justify-center items-center gap-2"><i className="fas fa-upload"></i> استيراد Excel</button>
+                                        </div>
+                                        <div className="lg:w-2/3 overflow-y-auto custom-scrollbar border rounded-lg p-2">
+                                            {questions.length === 0 && <p className="text-center text-gray-400 mt-10">لا توجد أسئلة مضافة.</p>}
+                                            {questions.map((q) => (
+                                                <div key={q.id} className="flex justify-between items-center p-3 border-b hover:bg-gray-50">
+                                                    <div><p className="font-bold">{q.question}</p><p className="text-sm text-orange-600">{q.answer}</p></div>
+                                                    <button onClick={() => deleteQuestionFromDB(q.id)} className="text-red-400 hover:bg-red-50 p-2 rounded"><i className="fas fa-trash"></i></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col lg:flex-row gap-6 h-full">
+                                        <div className="lg:w-1/3 space-y-4">
+                                            <h3 className="font-bold text-lg text-orange-700 border-b pb-2">تسجيل المدارس</h3>
+                                            <form onSubmit={(e) => { e.preventDefault(); if(newSchoolName && newSchoolPassword) { addSchoolToDB(newSchoolName, newSchoolPassword); setNewSchoolName(''); setNewSchoolPassword(''); } }} className="space-y-3">
+                                                <input type="text" value={newSchoolName} onChange={(e) => setNewSchoolName(e.target.value)} className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-orange-500 outline-none" placeholder="اسم المدرسة" />
+                                                <input type="text" value={newSchoolPassword} onChange={(e) => setNewSchoolPassword(e.target.value)} className="w-full p-3 border rounded-lg font-mono text-center tracking-widest focus:ring-2 focus:ring-orange-500 outline-none" placeholder="كلمة المرور" />
+                                                <button type="submit" className="w-full bg-orange-600 text-white py-3 rounded-lg font-bold hover:bg-orange-700 flex justify-center items-center gap-2"><i className="fas fa-plus"></i> تسجيل</button>
+                                            </form>
+                                            <button onClick={() => { if(window.confirm('هل تريد تصفير النتائج؟')) resetAllSchools(); }} className="w-full text-red-600 bg-red-50 border border-red-200 py-3 rounded-lg font-bold hover:bg-red-100 flex items-center justify-center gap-2"><i className="fas fa-sync"></i> تصفير النتائج</button>
+                                        </div>
+                                        <div className="lg:w-2/3 overflow-y-auto custom-scrollbar border rounded-lg p-2">
+                                            {schools.length === 0 && <p className="text-center text-gray-400 mt-10">لم يتم تسجيل مدارس.</p>}
+                                            {schools.map((s) => (
+                                                <div key={s.id} className="flex justify-between items-center p-4 mb-2 rounded-lg border border-gray-200 bg-white shadow-sm">
+                                                    <div><h4 className="font-bold text-lg text-gray-800">{s.name}</h4><div className="flex gap-2 text-sm text-gray-500"><span className="flex items-center gap-1 bg-gray-100 px-2 rounded text-xs"><i className="fas fa-key"></i> {s.password}</span><span>| النتيجة: {s.score}</span></div></div>
+                                                    <button onClick={() => deleteSchoolFromDB(s.id)} className="text-red-400 hover:bg-red-50 p-2 rounded"><i className="fas fa-trash"></i></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            const LeaderboardScreen = () => {
+                const sortedSchools = [...schools].sort((a, b) => b.score - a.score || b.solvedCount - a.solvedCount);
+                const totalQ = questions.length || 1;
+                return (
+                    <div className="flex flex-col h-screen bg-orange-50 animate-fadeIn overflow-hidden">
+                        <header className="bg-white p-4 shadow-sm flex justify-between items-center">
+                            <h1 className="text-2xl font-black text-orange-800 flex items-center gap-2"><i className="fas fa-trophy text-yellow-500"></i> النتائج المباشرة</h1>
+                            <div className="flex gap-2">
+                                <button onClick={() => setGameState('admin')} className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg font-bold hover:bg-gray-300">لوحة التحكم</button>
+                                <button onClick={() => setGameState('welcome')} className="px-4 py-2 bg-orange-600 text-white rounded-lg font-bold hover:bg-orange-700">خروج</button>
+                            </div>
+                        </header>
+                        <div className="flex-1 overflow-y-auto p-6 max-w-7xl mx-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 content-start">
+                            {sortedSchools.map((s, index) => {
+                                const progress = Math.min(100, Math.round((s.solvedCount / totalQ) * 100));
+                                return (
+                                    <div key={s.id} className={`bg-white rounded-2xl shadow-lg overflow-hidden border-t-8 transform transition-all duration-500 ${index===0?'border-yellow-400 scale-105 z-10':index===1?'border-gray-400':index===2?'border-orange-400':'border-orange-200'}`}>
+                                        <div className="p-6">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-black text-white ${index===0?'bg-yellow-400':index===1?'bg-gray-400':index===2?'bg-orange-400':'bg-orange-100 text-orange-600'}`}>{index+1}</div>
+                                                    <h3 className="font-bold text-xl text-gray-800 truncate max-w-[180px]">{s.name}</h3>
+                                                </div>
+                                                <div className="text-right"><div className="text-3xl font-black text-orange-600">{s.score}</div><div className="text-xs text-gray-500 font-bold">نقطة</div></div>
+                                            </div>
+                                            <div className="mb-2 flex justify-between text-sm font-bold text-gray-600"><span>إجابات صحيحة</span><span>{s.solvedCount} / {totalQ}</span></div>
+                                            <div className="h-4 bg-gray-100 rounded-full overflow-hidden"><div className={`h-full transition-all duration-1000 ease-out ${s.completed?'bg-green-500':'bg-orange-500'}`} style={{width: `${progress}%`}}></div></div>
+                                            {s.completed && <div className="mt-3 text-center text-green-600 font-bold flex justify-center items-center gap-1 animate-bounce"><i className="fas fa-check"></i> أكملوا التحدي!</div>}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
+            const ResultScreen = () => {
+                const currentSchool = schools.find(s => s.id === currentSchoolId);
+                return (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn min-h-screen">
+                        <div className="bg-white p-10 rounded-3xl shadow-2xl border-4 border-yellow-400 max-w-lg w-full">
+                            <i className="fas fa-trophy w-24 h-24 text-yellow-500 mx-auto mb-4 animate-bounce text-6xl"></i>
+                            <h2 className="text-4xl font-bold text-gray-800 mb-2">أحسنت يا بطل!</h2>
+                            {currentSchool && <h3 className="text-xl text-orange-600 font-bold mb-4">{currentSchool.name}</h3>}
+                            <div className="text-5xl font-black text-orange-600 mb-6">{score} نقطة</div>
+                            <button onClick={() => setGameState('welcome')} className="bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold hover:bg-gray-300 transition w-full flex justify-center items-center gap-2"><i className="fas fa-home"></i> العودة للرئيسية</button>
+                        </div>
+                    </div>
+                );
+            };
+
+            // --- مودال كلمة المرور (للمعلم) ---
+            const PasswordModal = () => (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm p-4">
+                    <div className="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-sm animate-scaleIn">
+                        <h3 className="text-xl font-bold mb-4 text-gray-800">كلمة مرور المعلم</h3>
+                        <form onSubmit={(e) => { e.preventDefault(); if(passwordInput === ADMIN_PASSWORD) { setGameState('admin'); setShowPasswordModal(false); setPasswordInput(''); } else setLoginError(true); }}>
+                            <input type="password" autoFocus value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} placeholder="كلمة المرور" className="w-full p-3 border border-gray-300 rounded-lg mb-4 text-center text-lg focus:ring-2 focus:ring-orange-500 outline-none" />
+                            {loginError && <p className="text-red-500 text-sm mb-4">كلمة المرور خاطئة</p>}
+                            <div className="flex gap-2">
+                                <button type="submit" className="flex-1 bg-orange-600 text-white py-2 rounded-lg font-bold">دخول</button>
+                                <button type="button" onClick={() => setShowPasswordModal(false)} className="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg font-bold">إلغاء</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+
+            // --- نافذة الخروج ---
+            const ExitModal = () => (
+                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center backdrop-blur-sm p-4 animate-fadeIn">
+                    <div className="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-sm animate-scaleIn text-center border-t-4 border-red-500">
+                        <div className="flex justify-center mb-4"><div className="p-3 bg-red-100 rounded-full"><i className="fas fa-exclamation-triangle text-red-600 text-2xl"></i></div></div>
+                        <h3 className="text-xl font-bold mb-2 text-gray-800">هل تريد الخروج؟</h3>
+                        <p className="text-gray-500 mb-6">لن يتم حفظ تقدمك الحالي إذا خرجت الآن.</p>
+                        <div className="flex gap-3">
+                            <button onClick={() => { setGameState('welcome'); setShowExitConfirm(false); }} className="flex-1 bg-red-600 text-white py-2 rounded-lg font-bold hover:bg-red-700 transition">خروج</button>
+                            <button onClick={() => setShowExitConfirm(false)} className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg font-bold hover:bg-gray-300 transition">إلغاء</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            // --- الشاشة الرئيسية للعب ---
+            if (gameState === 'playing') return (
+                <>
+                    {showExitConfirm && <ExitModal />}
+                    <header className="bg-orange-600 text-white p-3 shadow-md flex justify-between items-center z-10 sticky top-0">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setShowExitConfirm(true)} className="p-2 bg-orange-500 hover:bg-orange-400 text-white rounded-lg border border-orange-400 shadow-sm transition"><i className="fas fa-home"></i></button>
+                            <div className="flex items-center gap-2"><i className="fas fa-school"></i><span className="font-bold hidden sm:inline">مدرسة بلال بن رباح</span>{currentSchoolId && <span className="bg-yellow-400 text-yellow-900 text-xs px-2 py-1 rounded-full font-bold mr-2">{schools.find(s => s.id === currentSchoolId)?.name}</span>}</div>
+                        </div>
+                        <div className="bg-orange-800 px-4 py-1 rounded-full text-lg font-bold shadow-inner border border-orange-500">النتيجة: {score}</div>
+                    </header>
+                    <main className="flex-1 overflow-hidden relative p-2 md:p-4" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
+                        <div className="flex flex-col md:flex-row h-full max-w-6xl mx-auto gap-4">
+                            <div className="md:w-1/3 bg-white p-4 overflow-y-auto border-l-2 border-orange-200 shadow-lg z-10 flex flex-col rounded-xl">
+                                <h3 className="text-xl font-bold text-orange-800 mb-4 flex items-center gap-2 border-b pb-2"><i className="fas fa-book-open"></i> الأسئلة المطلوبة</h3>
+                                <div className="space-y-3 flex-1">
+                                    {questions.map((q) => {
+                                        const isSolved = solvedQuestions.includes(q.id);
+                                        return (
+                                            <div key={q.id} className={`p-3 rounded-lg border transition-all duration-300 ${isSolved ? 'bg-green-100 border-green-300' : 'bg-gray-50 border-gray-200 hover:bg-orange-50'}`}>
+                                                <div className="flex justify-between items-start">
+                                                    <p className={`text-sm md:text-base font-medium ${isSolved ? 'text-green-800 line-through opacity-70' : 'text-gray-700'}`}>{q.question}</p>
+                                                    {isSolved && <i className="fas fa-check text-green-600 flex-shrink-0 mr-2"></i>}
+                                                </div>
+                                                {isSolved && <div className="text-xs text-green-700 font-bold mt-1">الإجابة: {q.answer}</div>}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                            <div className="md:w-2/3 flex items-center justify-center bg-orange-100/50 rounded-xl p-4">
+                                <div className="grid gap-1 md:gap-2 p-3 bg-white rounded-xl shadow-2xl border-4 border-orange-300 relative w-full max-w-[600px] aspect-square" style={{ gridTemplateColumns: `repeat(${GRID_SIZE}, minmax(0, 1fr))` }}>
+                                    {grid.map((cell, index) => {
+                                        const active = isSelected(index);
+                                        const isSolved = solvedCells.includes(index);
+                                        return (
+                                            <div key={index} onMouseDown={() => handleMouseDown(index)} onMouseEnter={() => handleMouseEnter(index)} onTouchStart={(e) => { e.preventDefault(); handleMouseDown(index); }} onTouchMove={(e) => { e.preventDefault(); const touch = e.touches[0]; const el = document.elementFromPoint(touch.clientX, touch.clientY); if (el && el.dataset.index) handleMouseEnter(parseInt(el.dataset.index)); }} data-index={index}
+                                                className={`flex items-center justify-center text-lg md:text-2xl font-bold rounded-md cursor-pointer select-none transition-all duration-300 ${active ? 'bg-orange-600 text-white scale-110 shadow-lg z-20 ring-2 ring-orange-300' : isSolved ? 'bg-green-500 text-white scale-100 shadow-sm z-10' : 'bg-gray-50 text-orange-900 hover:bg-orange-100'}`}>
+                                                {cell.char}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </main>
+                </>
+            );
+
+            // --- العرض الأساسي ---
+            return (
+                <div className="min-h-screen flex flex-col">
+                    {gameState === 'welcome' && <WelcomeScreen />}
+                    {gameState === 'select_school' && <SelectSchoolScreen />}
+                    {gameState === 'admin' && <AdminScreen />}
+                    {gameState === 'leaderboard' && <LeaderboardScreen />}
+                    {gameState === 'result' && <ResultScreen />}
+                    {showPasswordModal && <PasswordModal />}
+                    
+                    {gameState !== 'playing' && (
+                        <footer className="bg-orange-100/80 p-2 text-center text-orange-800 text-sm font-bold border-t border-orange-200 mt-auto">
+                            تصميم المسابقة: أ.عبدالله بن خلف الرواحي
+                        </footer>
+                    )}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
