@@ -2,7 +2,7 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>مسابقة صل لتصل | مدرسة بلال بن رباح</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -18,41 +18,84 @@
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { font-family: 'Tajawal', sans-serif; background-color: #fff7ed; overflow: hidden; position: fixed; width: 100%; height: 100%; }
+        
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #fff7ed; 
+            overflow: hidden; 
+            position: fixed; 
+            width: 100%; 
+            height: 100dvh; /* استخدام Dvh لملاءمة شريط متصفحات الايباد والجوال */
+            margin: 0;
+            padding: 0;
+            -webkit-touch-callout: none; /* منع ظهور قائمة النسخ في الآيباد */
+        }
         
         .tabular-nums { font-variant-numeric: tabular-nums; }
         
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #fff7ed; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 10px; }
         
-        .grid-area { touch-action: none; user-select: none; }
-        .no-select { -webkit-user-select: none; user-select: none; }
+        .no-select { 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
         
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
         
         @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
         .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
+
+        /* --- تحسينات الآيباد والأجهزة اللوحية المتقدمة --- */
         
-        @keyframes shake { 10%, 90% { transform: translate3d(-1px, 0, 0); } 20%, 80% { transform: translate3d(2px, 0, 0); } 30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 40%, 60% { transform: translate3d(4px, 0, 0); } }
-        .animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        .game-main-layout {
+            display: flex;
+            height: calc(100dvh - 70px);
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .grid-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 247, 237, 0.3);
+            position: relative;
+            touch-action: none; /* لمنع تحرك الشاشة أثناء توصيل الحروف */
+        }
 
         .responsive-grid-container {
             display: grid;
-            gap: 1.5px; 
+            gap: 2px; 
             background-color: #fbd38d; 
             padding: 6px;
             border-radius: 1.5rem;
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
-            border: 8px solid #f97316;
-            width: auto;
-            height: auto;
-            max-width: 100%;
-            max-height: 100%;
-            aspect-ratio: 1/1;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15);
+            border: 6px solid #f97316;
             margin: auto;
+            aspect-ratio: 1 / 1;
+            /* الوضع الافتراضي للآيباد العمودي والجوال */
+            width: min(95%, calc(100dvh - 35dvh - 90px)); 
+            max-height: min(95vw, calc(100dvh - 35dvh - 90px));
+        }
+
+        /* الوضع الأفقي للآيباد والكمبيوتر */
+        @media (min-width: 1024px) {
+            .responsive-grid-container {
+                width: min(100%, calc(100dvh - 120px)); 
+                max-height: min(100vw, calc(100dvh - 120px));
+                border-width: 8px;
+                padding: 8px;
+                gap: 3px;
+            }
         }
 
         .letter-cell {
@@ -63,28 +106,11 @@
             background-color: white;
             border-radius: 0.15rem;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: all 0.1s ease;
             user-select: none;
-            font-size: clamp(8px, 3vmin, 24px);
             line-height: 1;
-        }
-
-        .game-main-layout {
-            display: flex;
-            height: calc(100vh - 70px);
-            width: 100%;
-            overflow: hidden;
-        }
-
-        .grid-zone {
-            flex: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 15px;
-            background-color: rgba(255, 247, 237, 0.3);
-            position: relative;
-            overflow: hidden;
+            touch-action: none; /* ضمان دقة اللمس داخل الخلية */
+            overflow: hidden; /* التعديل الأهم لمنع خروج الحروف */
         }
     </style>
 </head>
@@ -92,7 +118,6 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        // --- إعدادات Firebase ---
         const firebaseConfig = {
             apiKey: "AIzaSyA-PnMoYeVYHoGldHP-hF5Yl_E-IPcDIGs",
             authDomain: "school-contest-37c47.firebaseapp.com",
@@ -182,11 +207,11 @@
             return { grid: finalGrid, missing, placedCount };
         };
 
-        // --- المكونات الفرعية ---
+        // --- الشاشات ---
 
         function LoadingScreen() {
             return (
-                <div className="flex flex-col items-center justify-center h-screen bg-orange-50 animate-fadeIn">
+                <div className="flex flex-col items-center justify-center h-[100dvh] bg-orange-50 animate-fadeIn w-full">
                     <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
                     <p className="text-orange-800 font-bold text-xl">جاري التحميل...</p>
                 </div>
@@ -195,11 +220,11 @@
 
         function WelcomeScreen({ setGameState, setShowPasswordModal }) {
             return (
-                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn relative min-h-screen">
-                    <div className="bg-white/90 p-10 rounded-[3rem] shadow-2xl max-w-2xl w-full border-4 border-orange-500 relative z-10">
-                        <i className="fas fa-school text-7xl text-orange-600 mb-6 block text-center"></i>
-                        <h1 className="text-4xl md:text-5xl font-black text-orange-700 mb-2 text-center">مسابقة صِل لتصل</h1>
-                        <h3 className="text-xl text-gray-600 mb-10 text-center font-bold">مدرسة بلال بن رباح - الدراسات الاجتماعية</h3>
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn relative min-h-[100dvh] w-full">
+                    <div className="bg-white/90 p-8 lg:p-12 rounded-[3rem] shadow-2xl max-w-3xl w-full border-4 border-orange-500 relative z-10">
+                        <i className="fas fa-school text-6xl lg:text-7xl text-orange-600 mb-6 block text-center"></i>
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-orange-700 mb-4 text-center">مسابقة صِل لتصل</h1>
+                        <h3 className="text-xl md:text-2xl text-gray-600 mb-10 text-center font-bold">مدرسة بلال بن رباح - الدراسات الاجتماعية</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                             <button onClick={() => setGameState('select_school')} className="bg-orange-600 text-white p-6 rounded-3xl text-xl font-bold hover:bg-orange-700 transition shadow-lg transform hover:scale-105 active:scale-95">
                                 <i className="fas fa-user-graduate text-3xl mb-2"></i><br/>دخول المدارس
@@ -228,8 +253,8 @@
             };
 
             return (
-                <div className="flex flex-col items-center justify-center h-full p-4 min-h-screen animate-fadeIn">
-                    <div className="w-full max-w-md bg-white p-10 rounded-[3rem] shadow-2xl border-4 border-orange-200 relative z-10">
+                <div className="flex flex-col items-center justify-center h-[100dvh] w-full p-4 animate-fadeIn">
+                    <div className="w-full max-w-md bg-white p-8 lg:p-10 rounded-[3rem] shadow-2xl border-4 border-orange-200 relative z-10">
                         <button onClick={() => setGameState('welcome')} className="mb-6 text-orange-600 flex items-center gap-2 font-bold hover:underline transition"><i className="fas fa-arrow-right"></i> عودة</button>
                         <h2 className="text-3xl font-black text-center text-gray-800 mb-8">تسجيل الدخول</h2>
                         <form onSubmit={handleLogin} className="space-y-6">
@@ -245,26 +270,25 @@
         function ResultScreen({ schools, currentSchoolId, score, setGameState, isPracticeMode }) {
             const currentSchool = schools.find(s => s.id === currentSchoolId);
             return (
-                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn min-h-screen bg-white">
-                    <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-yellow-400 max-w-lg w-full transform scale-110">
+                <div className="flex flex-col items-center justify-center h-[100dvh] w-full text-center p-4 animate-fadeIn bg-white">
+                    <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-yellow-400 max-w-lg w-full transform scale-105 lg:scale-110">
                         <div className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce text-7xl flex justify-center items-center"><i className="fas fa-trophy"></i></div>
-                        <h2 className="text-5xl font-black text-gray-800 mb-4">أحسنت يا بطل!</h2>
-                        <h3 className="text-2xl text-orange-600 font-bold mb-4 bg-orange-50 py-3 rounded-2xl px-6 inline-block">
+                        <h2 className="text-4xl lg:text-5xl font-black text-gray-800 mb-4">أحسنت يا بطل!</h2>
+                        <h3 className="text-xl lg:text-2xl text-orange-600 font-bold mb-4 bg-orange-50 py-3 rounded-2xl px-6 inline-block">
                             {isPracticeMode ? "انتهى التدريب التجريبي" : (currentSchool?.name || "انتهت المسابقة")}
                         </h3>
                         
-                        {/* عرض توقيت الانتهاء للمتسابق */}
                         {currentSchool?.finishTime && !isPracticeMode && (
                             <div className="block mb-8">
-                                <div className="text-xl font-bold text-gray-500 bg-gray-50 py-2 px-6 rounded-xl inline-block border border-gray-100 tabular-nums">
+                                <div className="text-lg lg:text-xl font-bold text-gray-500 bg-gray-50 py-2 px-6 rounded-xl inline-block border border-gray-100 tabular-nums">
                                     <i className="far fa-clock ml-2"></i>
                                     توقيت الإنجاز: {currentSchool.finishTime}
                                 </div>
                             </div>
                         )}
 
-                        <div className="text-8xl font-black text-orange-600 mb-10 tabular-nums">{score} <span className="text-2xl text-gray-400 font-medium">نقطة</span></div>
-                        <button onClick={() => setGameState('welcome')} className="bg-gray-800 text-white px-10 py-5 rounded-2xl font-bold hover:bg-gray-900 transition w-full flex justify-center items-center gap-3 text-xl shadow-xl active:scale-95"><i className="fas fa-home"></i> العودة للرئيسية</button>
+                        <div className="text-7xl lg:text-8xl font-black text-orange-600 mb-10 tabular-nums">{score} <span className="text-xl lg:text-2xl text-gray-400 font-medium">نقطة</span></div>
+                        <button onClick={() => setGameState('welcome')} className="bg-gray-800 text-white px-10 py-4 lg:py-5 rounded-2xl font-bold hover:bg-gray-900 transition w-full flex justify-center items-center gap-3 text-lg lg:text-xl shadow-xl active:scale-95"><i className="fas fa-home"></i> العودة للرئيسية</button>
                     </div>
                 </div>
             );
@@ -296,13 +320,13 @@
             const girls = sorted.filter(s => s.type === 'girls');
 
             return (
-                <div className="h-screen flex flex-col bg-orange-50 animate-fadeIn">
-                    <div className="bg-white p-4 shadow-sm border-b-2 border-orange-200 flex justify-between items-center z-10">
+                <div className="h-[100dvh] w-full flex flex-col bg-orange-50 animate-fadeIn">
+                    <div className="bg-white p-4 shadow-sm border-b-2 border-orange-200 flex justify-between items-center z-10 flex-shrink-0">
                         <div className="flex gap-4 items-center">
-                            <h2 className="font-black text-2xl text-orange-800">غرفة التحكم</h2>
-                            <div className="bg-gray-800 text-white px-4 py-1 rounded-lg font-mono tabular-nums text-xl">{formatTime(timeLeft)}</div>
+                            <h2 className="font-black text-xl lg:text-2xl text-orange-800 hidden sm:block">غرفة التحكم</h2>
+                            <div className="bg-gray-800 text-white px-4 py-1 rounded-lg font-mono tabular-nums text-lg lg:text-xl">{formatTime(timeLeft)}</div>
                         </div>
-                        <div className="flex gap-2 overflow-x-auto pb-1">
+                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
                             <button onClick={() => setAdminTab('dashboard')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='dashboard'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>التحكم والنتائج</button>
                             <button onClick={() => setAdminTab('preview')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='preview'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>فحص الشبكة</button>
                             <button onClick={() => setAdminTab('questions')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='questions'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>الأسئلة</button>
@@ -311,30 +335,30 @@
                         </div>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                    <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar">
                         {adminTab === 'dashboard' && (
-                            <div className="flex flex-col gap-8 h-full">
-                                <div className="bg-white p-8 rounded-[2rem] shadow-xl flex flex-col items-center justify-center gap-6 border-b-8 border-orange-100">
-                                    <h3 className="text-3xl font-black text-gray-800">{gameConfig.isLocked ? "المسابقة مقفلة" : "المسابقة جارية الآن"}</h3>
-                                    <div className="flex gap-4">
-                                        <button onClick={actions.startGame} className="bg-green-600 text-white px-10 py-5 rounded-3xl font-bold text-xl shadow-xl hover:bg-green-700 transform hover:scale-105 transition">بدء المسابقة</button>
-                                        <button onClick={actions.resetGameStatus} className="bg-red-600 text-white px-10 py-5 rounded-3xl font-bold text-xl shadow-xl hover:bg-red-700 transform hover:scale-105 transition">إيقاف المسابقة</button>
+                            <div className="flex flex-col gap-6 lg:gap-8 h-full">
+                                <div className="bg-white p-6 lg:p-8 rounded-[2rem] shadow-xl flex flex-col items-center justify-center gap-6 border-b-8 border-orange-100">
+                                    <h3 className="text-2xl lg:text-3xl font-black text-gray-800">{gameConfig.isLocked ? "المسابقة مقفلة" : "المسابقة جارية الآن"}</h3>
+                                    <div className="flex flex-wrap justify-center gap-4">
+                                        <button onClick={actions.startGame} className="bg-green-600 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-bold text-lg lg:text-xl shadow-xl hover:bg-green-700 transform hover:scale-105 transition active:scale-95">بدء المسابقة</button>
+                                        <button onClick={actions.resetGameStatus} className="bg-red-600 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-bold text-lg lg:text-xl shadow-xl hover:bg-red-700 transform hover:scale-105 transition active:scale-95">إيقاف المسابقة</button>
                                     </div>
-                                    <div className="flex gap-4 mt-2">
+                                    <div className="flex flex-wrap justify-center gap-4 mt-2">
                                         <button onClick={actions.resetAllSchools} className="text-orange-600 font-bold hover:underline">تصفير النتائج</button>
-                                        <button onClick={actions.createNewCompetition} className="text-red-500 font-bold hover:underline border-r pr-4">مسابقة جديدة (حذف الكل)</button>
+                                        <button onClick={actions.createNewCompetition} className="text-red-500 font-bold hover:underline border-r-2 border-gray-200 pr-4">مسابقة جديدة (حذف الكل)</button>
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 flex-1 pb-10">
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 flex-1 pb-10">
                                     <div className="bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col border-t-8 border-blue-500">
                                         <div className="p-4 bg-blue-50 text-center font-black text-xl text-blue-800 border-b">نتائج الذكور</div>
                                         <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                                             {boys.length === 0 && <p className="text-center text-gray-400 py-10 italic font-bold">لا توجد نتائج</p>}
                                             {boys.map((s, i) => (
                                                 <div key={s.id} className="flex justify-between items-center p-4 border-2 border-blue-50 rounded-2xl shadow-sm">
-                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-lg">{s.name}</span></div>
-                                                    <div className="text-left"><span className="text-2xl font-black text-blue-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
+                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-base lg:text-lg">{s.name}</span></div>
+                                                    <div className="text-left"><span className="text-2xl lg:text-3xl font-black text-blue-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -345,8 +369,8 @@
                                             {girls.length === 0 && <p className="text-center text-gray-400 py-10 italic font-bold">لا توجد نتائج</p>}
                                             {girls.map((s, i) => (
                                                 <div key={s.id} className="flex justify-between items-center p-4 border-2 border-pink-50 rounded-2xl shadow-sm">
-                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-lg">{s.name}</span></div>
-                                                    <div className="text-left"><span className="text-2xl font-black text-pink-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
+                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-base lg:text-lg">{s.name}</span></div>
+                                                    <div className="text-left"><span className="text-2xl lg:text-3xl font-black text-pink-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
                                                 </div>
                                             ))}
                                         </div>
@@ -357,16 +381,16 @@
 
                         {adminTab === 'preview' && (
                             <div className="flex flex-col h-full bg-white p-6 rounded-[2rem] shadow-xl overflow-hidden animate-fadeIn">
-                                <div className="flex justify-between items-center mb-6 border-b pb-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b pb-4">
                                     <div className="flex flex-col">
-                                        <h3 className="font-black text-2xl text-orange-800">معاينة استيعاب الشبكة</h3>
+                                        <h3 className="font-black text-xl lg:text-2xl text-orange-800">معاينة استيعاب الشبكة</h3>
                                         <span className="text-sm text-gray-400 font-bold">الحجم الحالي: {previewGridSize}×{previewGridSize}</span>
                                     </div>
-                                    <button onClick={handleVerifyGrid} className="bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg flex items-center gap-2"><i className="fas fa-random"></i> تجربة التوليد / خلط</button>
+                                    <button onClick={handleVerifyGrid} className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg flex items-center justify-center gap-2 active:scale-95"><i className="fas fa-random"></i> تجربة التوليد / خلط</button>
                                 </div>
-                                <div className="flex flex-col lg:flex-row gap-8 flex-1 overflow-hidden">
+                                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 overflow-hidden">
                                     <div className="lg:w-1/3 space-y-4">
-                                        <div className="bg-orange-50 p-6 rounded-2xl border-2 border-orange-100 h-full">
+                                        <div className="bg-orange-50 p-6 rounded-2xl border-2 border-orange-100 lg:h-full">
                                             <h4 className="font-black text-orange-800 mb-4 border-b border-orange-200 pb-2">تقرير الفحص</h4>
                                             <div className="space-y-4 font-bold">
                                                 <div className="flex justify-between"><span>الأسئلة في البنك:</span><span className="text-indigo-600">{questions.length}</span></div>
@@ -377,8 +401,8 @@
                                                         {missingWords.length > 0 && (
                                                             <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-100 animate-fadeIn">
                                                                 <p className="text-xs text-red-700 mb-2 font-black">المرفوضة (طويلة أو متداخلة):</p>
-                                                                <ul className="text-xs list-disc list-inside mb-4 max-h-32 overflow-y-auto">{missingWords.map((w,i)=><li key={i}>{w}</li>)}</ul>
-                                                                <button onClick={handleDeleteMissingQuestions} className="w-full bg-red-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-red-700 shadow-md transition">حذف الأسئلة المرفوضة فوراً</button>
+                                                                <ul className="text-xs list-disc list-inside mb-4 max-h-32 overflow-y-auto custom-scrollbar">{missingWords.map((w,i)=><li key={i}>{w}</li>)}</ul>
+                                                                <button onClick={handleDeleteMissingQuestions} className="w-full bg-red-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-red-700 shadow-md transition active:scale-95">حذف المرفوضة فوراً</button>
                                                             </div>
                                                         )}
                                                     </>
@@ -386,24 +410,26 @@
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="lg:w-2/3 flex items-center justify-center bg-gray-50 rounded-[2rem] p-4 border-2 border-dashed border-gray-200 relative overflow-hidden">
+                                    <div className="lg:w-2/3 flex items-center justify-center bg-gray-50 rounded-[2rem] p-2 lg:p-4 border-2 border-dashed border-gray-200 relative overflow-hidden">
                                         {previewGrid ? (
-                                            <div className="grid gap-px bg-orange-100 p-1 rounded-xl shadow-inner border-2 border-orange-200" 
+                                            <div className="grid gap-[1px] lg:gap-px bg-orange-200 p-1.5 rounded-xl shadow-inner border-4 border-orange-400" 
                                                  style={{ 
-                                                    gridTemplateColumns: `repeat(${previewGridSize}, 1fr)`,
-                                                    width: 'min(100%, 450px)',
+                                                    gridTemplateColumns: `repeat(${previewGridSize}, minmax(0, 1fr))`,
+                                                    gridTemplateRows: `repeat(${previewGridSize}, minmax(0, 1fr))`,
+                                                    width: 'min(100%, 500px)',
                                                     aspectRatio: '1/1'
                                                  }}>
                                                 {previewGrid.map((cell, i) => (
-                                                    <div key={i} className={`flex items-center justify-center bg-white font-black text-[clamp(4px,1.2vw,12px)] rounded-sm ${cell.char && !cell.isRandom ? 'text-orange-600 bg-orange-50' : 'text-gray-300'}`}>
+                                                    <div key={i} className={`flex items-center justify-center bg-white font-black overflow-hidden rounded-sm ${cell.char && !cell.isRandom ? 'text-orange-600 bg-orange-50' : 'text-gray-300'}`}
+                                                         style={{ fontSize: `clamp(6px, calc(35vmin / ${previewGridSize}), 18px)`, lineHeight: 1 }}>
                                                         {cell.char}
                                                     </div>
                                                 ))}
                                             </div>
                                         ) : (
-                                            <div className="text-gray-300 flex flex-col items-center gap-4">
-                                                <i className="fas fa-th text-7xl opacity-20"></i>
-                                                <p className="font-bold">اضغط على زر التوليد في الأعلى للفحص</p>
+                                            <div className="text-gray-300 flex flex-col items-center gap-4 text-center">
+                                                <i className="fas fa-th text-5xl lg:text-7xl opacity-20"></i>
+                                                <p className="font-bold px-4">اضغط على زر التوليد في الأعلى للبدء بالفحص والتأكد من استيعاب الشبكة للكلمات.</p>
                                             </div>
                                         )}
                                     </div>
@@ -412,19 +438,19 @@
                         )}
 
                         {adminTab === 'questions' && (
-                            <div className="bg-white p-8 rounded-3xl shadow-xl h-full flex flex-col animate-fadeIn">
-                                <div className="flex justify-between items-center mb-6">
-                                    <h3 className="font-black text-2xl text-gray-800">بنك الأسئلة ({questions.length})</h3>
-                                    <div className="flex gap-2">
-                                        <button onClick={() => importState.setImportModal(true)} className="bg-green-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-green-700 transition">استيراد</button>
-                                        <button onClick={actions.deleteAllQuestionsFromDB} className="bg-red-50 text-red-600 px-6 py-2 rounded-xl font-bold hover:bg-red-100 transition">مسح الكل</button>
+                            <div className="bg-white p-6 lg:p-8 rounded-3xl shadow-xl h-full flex flex-col animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                    <h3 className="font-black text-xl lg:text-2xl text-gray-800">بنك الأسئلة ({questions.length})</h3>
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <button onClick={() => importState.setImportModal(true)} className="flex-1 sm:flex-none bg-green-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-green-700 transition">استيراد</button>
+                                        <button onClick={actions.deleteAllQuestionsFromDB} className="flex-1 sm:flex-none bg-red-50 text-red-600 px-6 py-2 rounded-xl font-bold hover:bg-red-100 transition">مسح الكل</button>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto custom-scrollbar border-2 border-gray-50 rounded-2xl">
                                     {questions.map((q, i) => (
                                         <div key={q.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-gray-50 transition group">
-                                            <span className="text-lg"><b>{i+1}.</b> {q.question} <span className="text-green-600 font-bold">({q.answer})</span></span>
-                                            <button onClick={() => actions.deleteQuestionFromDB(q.id)} className="text-red-300 hover:text-red-600 p-2 transition opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
+                                            <span className="text-base lg:text-lg"><b>{i+1}.</b> {q.question} <span className="text-green-600 font-bold block sm:inline mt-1 sm:mt-0 sm:mr-2">({q.answer})</span></span>
+                                            <button onClick={() => actions.deleteQuestionFromDB(q.id)} className="text-red-300 hover:text-red-600 p-2 transition opacity-100 lg:opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
                                         </div>
                                     ))}
                                 </div>
@@ -432,20 +458,20 @@
                         )}
 
                         {adminTab === 'schools' && (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 animate-fadeIn h-full">
-                                <div className="bg-white p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col">
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 animate-fadeIn h-full overflow-y-auto custom-scrollbar pb-10">
+                                <div className="bg-white p-6 lg:p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col h-fit">
                                     <h3 className="font-black text-xl mb-6 border-b pb-4 text-orange-800">تسجيل مدرسة</h3>
-                                    <div className="space-y-5">
+                                    <div className="space-y-4 lg:space-y-5">
                                         <input type="text" placeholder="اسم المدرسة" value={newSchoolState.newS.name} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, name: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl outline-none focus:border-orange-500" />
                                         <input type="text" placeholder="كلمة المرور" value={newSchoolState.newS.pass} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, pass: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl outline-none focus:border-orange-500" />
                                         <select value={newSchoolState.newS.type} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, type: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl bg-white font-bold">
                                             <option value="boys">ذكور</option>
                                             <option value="girls">إناث</option>
                                         </select>
-                                        <button onClick={() => { actions.addSchoolToDB(newSchoolState.newS.name, newSchoolState.newS.pass, newSchoolState.newS.type); newSchoolState.setNewS({name:'', pass:'', type:'boys'}); }} className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg">حفظ المدرسة</button>
+                                        <button onClick={() => { actions.addSchoolToDB(newSchoolState.newS.name, newSchoolState.newS.pass, newSchoolState.newS.type); newSchoolState.setNewS({name:'', pass:'', type:'boys'}); }} className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg active:scale-95">حفظ المدرسة</button>
                                     </div>
                                 </div>
-                                <div className="md:col-span-2 bg-white p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col overflow-hidden">
+                                <div className="lg:col-span-2 bg-white p-6 lg:p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col overflow-hidden min-h-[400px] h-full">
                                     <div className="flex justify-between items-center mb-6">
                                         <h3 className="font-black text-xl text-gray-800">المدارس المسجلة ({schools.length})</h3>
                                         <button onClick={actions.deleteAllSchoolsFromDB} className="text-red-500 text-sm font-bold hover:underline">حذف جميع المدارس</button>
@@ -455,9 +481,9 @@
                                             <div key={s.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-gray-50 group">
                                                 <div className="flex flex-col">
                                                     <span className="font-bold text-lg">{s.name} <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${s.type==='girls'?'bg-pink-100 text-pink-700':'bg-blue-100 text-blue-700'}`}>{s.type === 'girls' ? 'إناث' : 'ذكور'}</span></span>
-                                                    <span className="text-sm text-gray-400 font-bold">كلمة السر: {s.password}</span>
+                                                    <span className="text-sm text-gray-400 font-bold mt-1">كلمة السر: <span className="tabular-nums text-gray-600">{s.password}</span></span>
                                                 </div>
-                                                <button onClick={() => actions.deleteSchoolFromDB(s.id)} className="text-red-200 hover:text-red-500 p-2 transition opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
+                                                <button onClick={() => actions.deleteSchoolFromDB(s.id)} className="text-red-200 hover:text-red-500 p-3 transition opacity-100 lg:opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
                                             </div>
                                         ))}
                                     </div>
@@ -468,15 +494,15 @@
 
                     {importState.importModal && (
                         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-                            <div className="bg-white w-full max-w-4xl p-8 rounded-[2rem] shadow-2xl flex flex-col gap-6 animate-scaleIn">
-                                <h3 className="text-2xl font-black text-center">استيراد من Excel</h3>
-                                <div className="grid grid-cols-2 gap-6 flex-1 min-h-[300px]">
+                            <div className="bg-white w-full max-w-4xl p-6 lg:p-8 rounded-[2rem] shadow-2xl flex flex-col gap-4 lg:gap-6 animate-scaleIn">
+                                <h3 className="text-xl lg:text-2xl font-black text-center">استيراد من Excel</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-[250px] lg:min-h-[300px]">
                                     <div className="flex flex-col"><label className="font-bold text-sm mb-2 text-orange-600">قائمة الأسئلة</label><textarea value={importState.textQ} onChange={e=>importState.setTextQ(e.target.value)} className="flex-1 p-4 border rounded-2xl bg-gray-50 resize-none font-mono text-sm focus:border-orange-500 outline-none" placeholder="انسخ عمود الأسئلة هنا..."></textarea></div>
                                     <div className="flex flex-col"><label className="font-bold text-sm mb-2 text-green-600">قائمة الأجوبة</label><textarea value={importState.textA} onChange={e=>importState.setTextA(e.target.value)} className="flex-1 p-4 border rounded-2xl bg-gray-50 resize-none font-mono text-sm focus:border-green-500 outline-none" placeholder="انسخ عمود الأجوبة هنا..."></textarea></div>
                                 </div>
-                                <div className="flex gap-4 pt-4">
-                                    <button onClick={importState.handleImport} className="flex-[2] bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg active:scale-95">بدء الاستيراد</button>
-                                    <button onClick={() => importState.setImportModal(false)} className="flex-1 bg-gray-200 text-gray-600 py-4 rounded-2xl font-bold text-lg hover:bg-gray-300 transition">إلغاء</button>
+                                <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 pt-4">
+                                    <button onClick={importState.handleImport} className="w-full sm:w-2/3 bg-orange-600 text-white py-3 lg:py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg active:scale-95">بدء الاستيراد</button>
+                                    <button onClick={() => importState.setImportModal(false)} className="w-full sm:w-1/3 bg-gray-200 text-gray-600 py-3 lg:py-4 rounded-2xl font-bold text-lg hover:bg-gray-300 transition active:scale-95">إلغاء</button>
                                 </div>
                             </div>
                         </div>
@@ -485,7 +511,7 @@
             );
         }
 
-        // --- المكون الرئيسي ---
+        // --- نقطة التجميع الرئيسية للتطبيق ---
         function App() {
             const [user, setUser] = useState(null);
             const [gameState, setGameState] = useState('loading'); 
@@ -503,10 +529,10 @@
             const [startTimeStamp, setStartTimeStamp] = useState(null);
             const [showPasswordModal, setShowPasswordModal] = useState(false);
             const [passwordInput, setPasswordInput] = useState('');
-            const [loginError, setLoginError] = useState(false);
             const [showExitConfirm, setShowExitConfirm] = useState(false);
             const [isPracticeMode, setIsPracticeMode] = useState(false);
             const [adminTab, setAdminTab] = useState('dashboard');
+            
             const [importModal, setImportModal] = useState(false);
             const [textQ, setTextQ] = useState('');
             const [textA, setTextA] = useState('');
@@ -514,8 +540,12 @@
 
             useEffect(() => {
                 const unsub = auth.onAuthStateChanged((u) => {
-                    if (u) { setUser(u); if (gameState === 'loading') setGameState('welcome'); } 
-                    else { auth.signInAnonymously().catch(e => console.error(e)); }
+                    if (u) { 
+                        setUser(u); 
+                        if (gameState === 'loading') setGameState('welcome'); 
+                    } else { 
+                        auth.signInAnonymously().catch(e => console.error(e)); 
+                    }
                 });
                 return () => unsub();
             }, []);
@@ -607,7 +637,7 @@
             if (gameState === 'loading') return <LoadingScreen />;
 
             return (
-                <div dir="rtl" className="h-screen flex flex-col overflow-hidden bg-orange-50 no-select">
+                <div dir="rtl" className="h-[100dvh] flex flex-col overflow-hidden bg-orange-50 no-select relative w-full">
                     {gameState === 'welcome' && (
                         <WelcomeScreen setGameState={setGameState} setShowPasswordModal={setShowPasswordModal} />
                     )}
@@ -636,34 +666,46 @@
                     )}
 
                     {gameState === 'playing' && (
-                        <div className="h-full flex flex-col" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
-                            <header className={`p-4 text-white flex justify-between items-center shadow-xl h-[70px] z-20 ${isPracticeMode ? 'bg-indigo-600 border-b-4 border-indigo-800':'bg-orange-600 border-b-4 border-orange-800'}`}>
-                                <div className="flex items-center gap-4">
-                                    <button onClick={(e)=>{ e.stopPropagation(); setShowExitConfirm(true); }} className="w-10 h-10 bg-black/20 rounded-xl flex items-center justify-center active:scale-90 transition shadow-inner"><i className="fas fa-home"></i></button>
-                                    <span className="font-black text-xl truncate max-w-[200px]">{isPracticeMode ? "وضع التدريب": schools.find(s=>s.id===currentSchoolId)?.name}</span>
+                        <div className="h-full w-full flex flex-col" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
+                            <header className={`p-4 text-white flex justify-between items-center shadow-xl h-[70px] z-20 shrink-0 ${isPracticeMode ? 'bg-indigo-600 border-b-4 border-indigo-800':'bg-orange-600 border-b-4 border-orange-800'}`}>
+                                <div className="flex items-center gap-2 lg:gap-4">
+                                    <button onClick={(e)=>{ e.stopPropagation(); setShowExitConfirm(true); }} className="w-10 h-10 bg-black/20 rounded-xl flex items-center justify-center active:scale-90 transition shadow-inner shrink-0"><i className="fas fa-home text-lg"></i></button>
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-lg lg:text-xl truncate max-w-[150px] lg:max-w-[250px]">{isPracticeMode ? "وضع التدريب": schools.find(s=>s.id===currentSchoolId)?.name}</span>
+                                    </div>
                                 </div>
-                                <div className="flex gap-4 items-center">
-                                    {!isPracticeMode && <div className="bg-black/20 px-4 py-1 rounded-2xl tabular-nums font-black text-2xl">{formatTime(timeLeft)}</div>}
-                                    <div className="bg-white text-orange-800 px-6 py-1 rounded-2xl font-black text-xl shadow-lg tabular-nums">{score}</div>
+                                <div className="flex gap-2 lg:gap-6 items-center shrink-0">
+                                    {!isPracticeMode && <div className="bg-black/20 px-3 lg:px-5 py-1 lg:py-1.5 rounded-xl lg:rounded-2xl tabular-nums font-black text-lg lg:text-2xl shadow-inner border border-white/10 hidden sm:block">{formatTime(timeLeft)}</div>}
+                                    <div className="bg-white text-orange-800 px-4 lg:px-6 py-1 lg:py-1.5 rounded-xl lg:rounded-2xl font-black text-lg lg:text-xl shadow-lg tabular-nums">{score} <span className="text-xs text-gray-400 font-bold hidden sm:inline-block">نقطة</span></div>
                                 </div>
                             </header>
-                            <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                                <div className="w-full md:w-1/3 bg-white border-l-4 border-orange-100 p-6 overflow-y-auto custom-scrollbar shadow-2xl z-10">
-                                    <h3 className="font-black text-orange-800 mb-6 border-b-2 pb-3 flex items-center gap-3 text-xl"><i className="fas fa-tasks text-orange-400"></i> قائمة الأسئلة</h3>
-                                    <div className="space-y-3 pb-20">
+                            
+                            <main className="game-main-layout flex-col lg:flex-row">
+                                <div className="w-full lg:w-1/3 h-[30%] lg:h-full bg-white border-b-4 lg:border-b-0 lg:border-l-4 border-orange-100 p-4 lg:p-6 overflow-y-auto custom-scrollbar shadow-xl z-10 flex flex-col shrink-0">
+                                    <h3 className="font-black text-orange-800 mb-3 lg:mb-6 border-b-2 pb-2 lg:pb-3 flex items-center gap-2 lg:gap-3 text-lg lg:text-2xl shrink-0"><i className="fas fa-tasks text-orange-400"></i> قائمة الأسئلة</h3>
+                                    <div className="space-y-2 lg:space-y-4 pb-2 lg:pb-20 overflow-y-auto custom-scrollbar pr-2">
                                         {(isPracticeMode ? TRAINING_QUESTIONS : questions).map((q, i) => (
-                                            <div key={q.id} className={`p-4 rounded-2xl border-2 transition-all duration-300 ${solvedQuestions.includes(q.id)?'bg-green-50 border-green-200 opacity-60':'bg-white border-orange-50 shadow-sm'}`}>
-                                                <p className={`text-base font-bold ${solvedQuestions.includes(q.id)?'line-through text-green-700 font-normal':'text-gray-700'}`}><span className="text-orange-400 ml-1">#{i+1}</span> {q.question}</p>
+                                            <div key={q.id} className={`p-3 lg:p-4 rounded-xl lg:rounded-2xl border-2 transition-all duration-300 ${solvedQuestions.includes(q.id)?'bg-green-50 border-green-200 opacity-60 shadow-none':'bg-white border-orange-50 shadow-sm'}`}>
+                                                <p className={`text-sm lg:text-lg font-bold leading-tight lg:leading-relaxed ${solvedQuestions.includes(q.id)?'line-through text-green-700 font-normal':'text-gray-700'}`}>
+                                                    <span className="text-orange-400 ml-1 lg:ml-2 font-black">#{i+1}</span> {q.question}
+                                                </p>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
-                                <div className="flex-1 flex items-center justify-center p-4 bg-orange-50/50">
-                                    <div className="responsive-grid-container" style={{ gridTemplateColumns: `repeat(${gridSize}, 1fr)` }}>
+                                
+                                <div className="grid-zone w-full lg:w-2/3 h-[70%] lg:h-full pb-6 lg:pb-0">
+                                    <div className="responsive-grid-container" 
+                                         style={{ 
+                                             gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                                             gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))` 
+                                         }}>
                                         {grid.map((cell, idx) => (
                                             <div key={idx} onMouseDown={()=>setSelection({start:idx, current:idx, active:true})} onMouseEnter={()=>selection.active && setSelection(p=>({...p, current:idx}))} onTouchStart={(e)=>{e.preventDefault(); setSelection({start:idx, current:idx, active:true});}}
                                                  onTouchMove={(e)=>{ e.preventDefault(); const touch = e.touches[0]; const el = document.elementFromPoint(touch.clientX, touch.clientY); if (el && el.dataset.idx) setSelection(p=>({...p, current:parseInt(el.dataset.idx)})); }}
-                                                 data-idx={idx} className={`letter-cell shadow-sm ${isSelected(idx) ? 'bg-orange-600 text-white scale-110 z-10 ring-2 ring-white shadow-xl' : solvedCells.includes(idx) ? 'bg-green-500 text-white opacity-90 scale-95' : 'bg-white text-gray-800 border-2 border-gray-50 hover:bg-orange-50'}`}>
+                                                 data-idx={idx} 
+                                                 className={`letter-cell shadow-sm ${isSelected(idx) ? 'bg-orange-600 text-white scale-110 z-10 ring-2 ring-white shadow-xl' : solvedCells.includes(idx) ? 'bg-green-500 text-white opacity-90 scale-95' : 'bg-white text-gray-800 hover:bg-orange-50'}`}
+                                                 style={{ fontSize: `clamp(8px, calc(50vmin / ${gridSize}), 32px)` }}>
                                                 {cell.char}
                                             </div>
                                         ))}
@@ -675,12 +717,12 @@
 
                     {showPasswordModal && (
                         <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
-                            <div className="bg-white p-10 rounded-[3rem] shadow-2xl w-full max-w-xs animate-scaleIn border-b-8 border-orange-500">
-                                <h3 className="font-black text-2xl mb-6 text-center text-gray-800">دخول الإدارة</h3>
-                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} autoFocus placeholder="كلمة المرور" onKeyDown={(e)=>{if(e.key==='Enter' && passwordInput === ADMIN_PASSWORD){setGameState('admin'); setShowPasswordModal(false); setPasswordInput('');} else if(e.key==='Enter') alert('خطأ');}} className="w-full p-4 border-2 border-gray-100 rounded-2xl text-center mb-6 focus:border-orange-400 outline-none text-xl transition-all" />
+                            <div className="bg-white p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] shadow-2xl w-full max-w-xs animate-scaleIn border-b-8 border-orange-500">
+                                <h3 className="font-black text-xl lg:text-2xl mb-6 text-center text-gray-800">دخول الإدارة</h3>
+                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} autoFocus placeholder="كلمة المرور" onKeyDown={(e)=>{if(e.key==='Enter' && passwordInput === ADMIN_PASSWORD){setGameState('admin'); setShowPasswordModal(false); setPasswordInput('');} else if(e.key==='Enter') alert('خطأ');}} className="w-full p-4 border-2 border-gray-100 rounded-xl lg:rounded-2xl text-center mb-6 focus:border-orange-400 outline-none text-xl transition-all" />
                                 <div className="flex flex-col gap-2">
-                                    <button onClick={() => { if(passwordInput === ADMIN_PASSWORD) { setGameState('admin'); setShowPasswordModal(false); setPasswordInput(''); } else alert('خطأ'); }} className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition">دخول</button>
-                                    <button onClick={() => {setShowPasswordModal(false); setPasswordInput('');}} className="w-full text-gray-400 font-bold hover:text-gray-600 transition">إلغاء</button>
+                                    <button onClick={() => { if(passwordInput === ADMIN_PASSWORD) { setGameState('admin'); setShowPasswordModal(false); setPasswordInput(''); } else alert('خطأ'); }} className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-md active:scale-95">دخول</button>
+                                    <button onClick={() => {setShowPasswordModal(false); setPasswordInput('');}} className="w-full text-gray-400 font-bold hover:text-gray-600 transition p-2">إلغاء</button>
                                 </div>
                             </div>
                         </div>
@@ -688,19 +730,19 @@
 
                     {showExitConfirm && (
                         <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-fadeIn backdrop-blur-md">
-                            <div className="bg-white p-10 rounded-[3rem] shadow-2xl max-sm w-full text-center border-t-8 border-red-500 animate-scaleIn">
+                            <div className="bg-white p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] shadow-2xl max-w-sm w-full text-center border-t-8 border-red-500 animate-scaleIn">
                                 <div className="text-red-500 text-6xl mb-6 flex justify-center"><i className="fas fa-exclamation-circle"></i></div>
                                 <h3 className="text-2xl font-black text-gray-800 mb-2">تنبيه بالخروج</h3>
                                 <p className="text-gray-500 mb-8 font-medium">هل أنت متأكد من العودة للرئيسية؟ سيتم فقدان تقدمك الحالي.</p>
                                 <div className="flex gap-4">
-                                    <button onClick={()=>{ setGameState('welcome'); setShowExitConfirm(false); }} className="flex-1 bg-red-600 text-white py-4 rounded-2xl font-bold text-lg active:scale-95 transition shadow-lg text-center">خروج</button>
-                                    <button onClick={()=>setShowExitConfirm(false)} className="flex-1 bg-gray-100 text-gray-600 py-4 rounded-2xl font-bold text-lg active:scale-95 transition text-center">إلغاء</button>
+                                    <button onClick={()=>{ setGameState('welcome'); setShowExitConfirm(false); }} className="flex-1 bg-red-600 text-white py-3 lg:py-4 rounded-xl lg:rounded-2xl font-bold text-lg active:scale-95 transition shadow-lg text-center">خروج</button>
+                                    <button onClick={()=>setShowExitConfirm(false)} className="flex-1 bg-gray-100 text-gray-600 py-3 lg:py-4 rounded-xl lg:rounded-2xl font-bold text-lg active:scale-95 transition text-center">إلغاء</button>
                                 </div>
                             </div>
                         </div>
                     )}
 
-                    {gameState !== 'playing' && <footer className="fixed bottom-0 w-full bg-white/60 backdrop-blur-sm p-1.5 text-center text-xs text-gray-400 font-bold z-0">تصميم المسابقة: أ. عبدالله بن خلف الرواحي</footer>}
+                    {gameState !== 'playing' && <footer className="fixed bottom-0 w-full bg-white/60 backdrop-blur-sm p-1.5 text-center text-[10px] lg:text-xs text-gray-400 font-bold z-0 border-t border-orange-100">تصميم المسابقة: أ. عبدالله بن خلف الرواحي</footer>}
                 </div>
             );
         }
