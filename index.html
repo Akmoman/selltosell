@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>مسابقة صل لتصل | مدرسة بلال بن رباح</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;900&display=swap');
+        
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #fff7ed; 
+            overflow: hidden; 
+            position: fixed; 
+            width: 100%; 
+            height: 100dvh; /* استخدام Dvh لملاءمة شريط متصفحات الايباد والجوال */
+            margin: 0;
+            padding: 0;
+            -webkit-touch-callout: none; /* منع ظهور قائمة النسخ في الآيباد */
+        }
+        
+        .tabular-nums { font-variant-numeric: tabular-nums; }
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #fdba74; border-radius: 10px; }
+        
+        .no-select { 
+            -webkit-user-select: none; 
+            user-select: none; 
+        }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+        
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .animate-scaleIn { animation: scaleIn 0.3s ease-out; }
+
+        /* --- تحسينات الآيباد والأجهزة اللوحية المتقدمة --- */
+        
+        .game-main-layout {
+            display: flex;
+            height: calc(100dvh - 70px);
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .grid-zone {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: rgba(255, 247, 237, 0.3);
+            position: relative;
+            touch-action: none; /* لمنع تحرك الشاشة أثناء توصيل الحروف */
+        }
+
+        .responsive-grid-container {
+            display: grid;
+            gap: 2px; 
+            background-color: #fbd38d; 
+            padding: 6px;
+            border-radius: 1.5rem;
+            box-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.15);
+            border: 6px solid #f97316;
+            margin: auto;
+            aspect-ratio: 1 / 1;
+            /* الوضع الافتراضي للآيباد العمودي والجوال */
+            width: min(95%, calc(100dvh - 35dvh - 90px)); 
+            max-height: min(95vw, calc(100dvh - 35dvh - 90px));
+        }
+
+        /* الوضع الأفقي للآيباد والكمبيوتر */
+        @media (min-width: 1024px) {
+            .responsive-grid-container {
+                width: min(100%, calc(100dvh - 120px)); 
+                max-height: min(100vw, calc(100dvh - 120px));
+                border-width: 8px;
+                padding: 8px;
+                gap: 3px;
+            }
+        }
+
+        .letter-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            background-color: white;
+            border-radius: 0.15rem;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            user-select: none;
+            line-height: 1;
+            touch-action: none; /* ضمان دقة اللمس داخل الخلية */
+            overflow: hidden; /* التعديل الأهم لمنع خروج الحروف */
+        }
+    </style>
+</head>
+<body class="bg-orange-50 text-gray-800">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const firebaseConfig = {
+            apiKey: "AIzaSyA-PnMoYeVYHoGldHP-hF5Yl_E-IPcDIGs",
+            authDomain: "school-contest-37c47.firebaseapp.com",
+            projectId: "school-contest-37c47",
+            storageBucket: "school-contest-37c47.firebasestorage.app",
+            messagingSenderId: "213932298832",
+            appId: "1:213932298832:web:ad1ce18a078ce7ce44b755",
+            measurementId: "G-LVR7RE87JB"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        const appId = 'school-contest-data-v1';
+        const { useState, useEffect, useMemo } = React;
+        const ARABIC_CHARS = "ابتثجحخدذرزسشصضطظعغفقكلمنهوي";
+        const ADMIN_PASSWORD = "akm1983";
+        const COMPETITION_DURATION_MS = 60 * 60 * 1000;
+
+        const TRAINING_QUESTIONS = [
+            { id: 't1', question: "عاصمة سلطنة عمان", answer: "مسقط" },
+            { id: 't2', question: "العملة الرسمية في عمان", answer: "الريال" },
+            { id: 't3', question: "يحد عمان من جهة الغرب", answer: "السعودية" },
+            { id: 't4', question: "تقع عمان في قارة", answer: "اسيا" },
+            { id: 't5', question: "نظام الحكم في عمان", answer: "سلطاني" }
+        ];
+
+        const getCollection = (name) => db.collection(`artifacts/${appId}/public/data/${name}`);
+        
+        const formatTime = (ms) => {
+            if (ms === null || ms < 0) return "00:00";
+            const totalSeconds = Math.floor(ms / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        };
+
+        const calculateGridSize = (questionList) => {
+            if (!questionList || questionList.length === 0) return 12;
+            const totalChars = questionList.reduce((acc, q) => acc + q.answer.replace(/\s/g, '').length, 0);
+            const longestWord = Math.max(...questionList.map(q => q.answer.replace(/\s/g, '').length), 0);
+            const suggestedSize = Math.ceil(Math.sqrt(totalChars * 4.8)); 
+            let size = Math.max(12, longestWord + 1, suggestedSize);
+            return Math.min(22, size); 
+        };
+
+        const createGridLogic = (questionList, size) => {
+            const activeQuestions = questionList.length > 0 ? questionList : TRAINING_QUESTIONS;
+            let newGrid = Array(size * size).fill({ char: '', id: '' });
+            const getIndex = (x, y) => y * size + x;
+            const shuffledQuestions = [...activeQuestions].sort(() => 0.5 - Math.random());
+            const missing = [];
+            let placedCount = 0;
+
+            shuffledQuestions.forEach((q) => {
+                let cleanAnswer = q.answer.replace(/\s/g, '');
+                if (cleanAnswer.length > size) { missing.push(q.answer); return; }
+                let placed = false, attempts = 0;
+                while (!placed && attempts < 1500) { 
+                    const direction = Math.floor(Math.random() * 3); 
+                    const startX = Math.floor(Math.random() * size);
+                    const startY = Math.floor(Math.random() * size);
+                    let fits = true, indices = [];
+                    for (let i = 0; i < cleanAnswer.length; i++) {
+                        let x = startX, y = startY;
+                        if (direction === 0) x += i;
+                        else if (direction === 1) y += i;
+                        else { x += i; y += i; }
+                        if (x >= size || y >= size) { fits = false; break; }
+                        const idx = getIndex(x, y);
+                        if (newGrid[idx].char !== '') { fits = false; break; }
+                        indices.push(idx);
+                    }
+                    if (fits) {
+                        indices.forEach((idx, i) => { newGrid[idx] = { char: cleanAnswer[i], id: `cell-${idx}`, wordId: q.id }; });
+                        placed = true; placedCount++;
+                    }
+                    attempts++;
+                }
+                if(!placed) missing.push(q.answer);
+            });
+            const finalGrid = newGrid.map((cell, idx) => {
+                if (cell.char === '') return { char: ARABIC_CHARS[Math.floor(Math.random() * ARABIC_CHARS.length)], id: `rand-${idx}`, isRandom: true };
+                return cell;
+            });
+            return { grid: finalGrid, missing, placedCount };
+        };
+
+        // يحاول توليد الشبكة عدة مرات ويختار أفضل محاولة (أقل عدد كلمات لم تجد مكاناً)
+        // هذا يقلل بشكل كبير احتمال ظهور سؤال في القائمة بدون أن تكون حروفه موجودة فعلياً داخل الشبكة
+        const generateBestGrid = (questionList, size, tries = 6) => {
+            let best = createGridLogic(questionList, size);
+            for (let i = 1; i < tries && best.missing.length > 0; i++) {
+                const attempt = createGridLogic(questionList, size);
+                if (attempt.missing.length < best.missing.length) best = attempt;
+            }
+            return best;
+        };
+
+        // --- الشاشات ---
+
+        function LoadingScreen() {
+            return (
+                <div className="flex flex-col items-center justify-center h-[100dvh] bg-orange-50 animate-fadeIn w-full">
+                    <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4 shadow-lg"></div>
+                    <p className="text-orange-800 font-bold text-xl">جاري التحميل...</p>
+                </div>
+            );
+        }
+
+        function WelcomeScreen({ setGameState, setShowPasswordModal }) {
+            return (
+                <div className="flex flex-col items-center justify-center h-full text-center p-4 animate-fadeIn relative min-h-[100dvh] w-full">
+                    <div className="bg-white/90 p-8 lg:p-12 rounded-[3rem] shadow-2xl max-w-3xl w-full border-4 border-orange-500 relative z-10">
+                        <i className="fas fa-school text-6xl lg:text-7xl text-orange-600 mb-6 block text-center"></i>
+                        <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-orange-700 mb-4 text-center">مسابقة صِل لتصل</h1>
+                        <h3 className="text-xl md:text-2xl text-gray-600 mb-10 text-center font-bold">مدرسة بلال بن رباح - الدراسات الاجتماعية</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                            <button onClick={() => setGameState('select_school')} className="bg-orange-600 text-white p-6 rounded-3xl text-xl font-bold hover:bg-orange-700 transition shadow-lg transform hover:scale-105 active:scale-95">
+                                <i className="fas fa-user-graduate text-3xl mb-2"></i><br/>دخول المدارس
+                            </button>
+                            <button onClick={() => setShowPasswordModal(true)} className="bg-white text-orange-800 border-2 border-orange-200 p-6 rounded-3xl text-xl font-bold hover:bg-orange-50 transition shadow-lg transform hover:scale-105 active:scale-95">
+                                <i className="fas fa-user-shield text-3xl mb-2"></i><br/>لوحة التحكم
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function SelectSchoolScreen({ schools, gameConfig, handleStartPlaying, setGameState }) {
+            const [enteredCode, setEnteredCode] = useState('');
+            const [error, setError] = useState(false);
+            
+            const handleLogin = (e) => {
+                e.preventDefault();
+                if (enteredCode === 'test') { handleStartPlaying('training-mode', true); return; }
+                if (gameConfig.isLocked) { alert("المسابقة مغلقة حالياً."); return; }
+                if (!schools || schools.length === 0) { alert("جاري تحميل البيانات..."); return; }
+                const foundSchool = schools.find(s => s.password === enteredCode);
+                if (foundSchool) handleStartPlaying(foundSchool.id, false);
+                else setError(true);
+            };
+
+            return (
+                <div className="flex flex-col items-center justify-center h-[100dvh] w-full p-4 animate-fadeIn">
+                    <div className="w-full max-w-md bg-white p-8 lg:p-10 rounded-[3rem] shadow-2xl border-4 border-orange-200 relative z-10">
+                        <button onClick={() => setGameState('welcome')} className="mb-6 text-orange-600 flex items-center gap-2 font-bold hover:underline transition"><i className="fas fa-arrow-right"></i> عودة</button>
+                        <h2 className="text-3xl font-black text-center text-gray-800 mb-8">تسجيل الدخول</h2>
+                        <form onSubmit={handleLogin} className="space-y-6">
+                            <input type="password" autoFocus value={enteredCode} onChange={(e) => {setEnteredCode(e.target.value); setError(false);}} placeholder="الرمز السري" className="w-full p-4 border-2 border-gray-100 rounded-2xl text-center text-2xl tracking-widest focus:ring-4 focus:ring-orange-100 focus:border-orange-500 outline-none transition-all placeholder:text-gray-300" />
+                            {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl flex items-center justify-center gap-2 font-bold animate-shake"><i className="fas fa-exclamation-triangle"></i><span>الرمز غير صحيح</span></div>}
+                            <button type="submit" className="w-full bg-orange-600 text-white py-4 rounded-xl text-xl font-bold hover:bg-orange-700 transition shadow-lg transform active:scale-95">دخول</button>
+                        </form>
+                    </div>
+                </div>
+            );
+        }
+
+        function ResultScreen({ schools, currentSchoolId, score, setGameState, isPracticeMode }) {
+            const currentSchool = schools.find(s => s.id === currentSchoolId);
+            return (
+                <div className="flex flex-col items-center justify-center h-[100dvh] w-full text-center p-4 animate-fadeIn bg-white">
+                    <div className="bg-white p-12 rounded-[3rem] shadow-2xl border-4 border-yellow-400 max-w-lg w-full transform scale-105 lg:scale-110">
+                        <div className="w-24 h-24 text-yellow-500 mx-auto mb-6 animate-bounce text-7xl flex justify-center items-center"><i className="fas fa-trophy"></i></div>
+                        <h2 className="text-4xl lg:text-5xl font-black text-gray-800 mb-4">أحسنت يا بطل!</h2>
+                        <h3 className="text-xl lg:text-2xl text-orange-600 font-bold mb-4 bg-orange-50 py-3 rounded-2xl px-6 inline-block">
+                            {isPracticeMode ? "انتهى التدريب التجريبي" : (currentSchool?.name || "انتهت المسابقة")}
+                        </h3>
+                        
+                        {currentSchool?.finishTime && !isPracticeMode && (
+                            <div className="block mb-8">
+                                <div className="text-lg lg:text-xl font-bold text-gray-500 bg-gray-50 py-2 px-6 rounded-xl inline-block border border-gray-100 tabular-nums">
+                                    <i className="far fa-clock ml-2"></i>
+                                    توقيت الإنجاز: {currentSchool.finishTime}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="text-7xl lg:text-8xl font-black text-orange-600 mb-10 tabular-nums">{score} <span className="text-xl lg:text-2xl text-gray-400 font-medium">نقطة</span></div>
+                        <button onClick={() => setGameState('welcome')} className="bg-gray-800 text-white px-10 py-4 lg:py-5 rounded-2xl font-bold hover:bg-gray-900 transition w-full flex justify-center items-center gap-3 text-lg lg:text-xl shadow-xl active:scale-95"><i className="fas fa-home"></i> العودة للرئيسية</button>
+                    </div>
+                </div>
+            );
+        }
+
+        function AdminScreen({ questions, schools, gameConfig, timeLeft, adminTab, setAdminTab, setGameState, actions, importState, newSchoolState }) {
+            const [previewGrid, setPreviewGrid] = useState(null);
+            const [missingWords, setMissingWords] = useState([]);
+            const [previewGridSize, setPreviewGridSize] = useState(12);
+
+            const handleVerifyGrid = () => {
+                const newSize = calculateGridSize(questions);
+                setPreviewGridSize(newSize);
+                const result = generateBestGrid(questions, newSize);
+                setPreviewGrid(result.grid);
+                setMissingWords(result.missing);
+            };
+
+            const handleDeleteMissingQuestions = async () => {
+                if (!window.confirm(`هل تريد حذف ${missingWords.length} أسئلة لم تجد مكاناً في الشبكة؟`)) return;
+                const questionsToDelete = questions.filter(q => missingWords.includes(q.answer));
+                const batch = db.batch();
+                questionsToDelete.forEach(q => batch.delete(getCollection('questions').doc(q.id)));
+                try { await batch.commit(); alert("تم تنظيف البنك."); setMissingWords([]); setPreviewGrid(null); } catch (e) { alert(e.message); }
+            };
+
+            // ترتيب المدارس: الأعلى نقاطاً أولاً، وعند تساوي النقاط تُقدَّم المدرسة التي أنهت المسابقة
+            // بوقت أقل (بدقة الميلي ثانية، أي حتى الثانية وأدق). من لم ينهِ المسابقة يوضع بعد من أنهاها عند تساوي النقاط.
+            const sorted = [...schools].sort((a, b) => {
+                if (b.score !== a.score) return b.score - a.score;
+                const aDone = a.completed && typeof a.finishTimeMs === 'number';
+                const bDone = b.completed && typeof b.finishTimeMs === 'number';
+                if (aDone && bDone) return a.finishTimeMs - b.finishTimeMs; // الأسرع في الإنجاز يتقدّم
+                if (aDone) return -1;
+                if (bDone) return 1;
+                return (a.solvedCount || 0) === (b.solvedCount || 0) ? 0 : (b.solvedCount || 0) - (a.solvedCount || 0);
+            });
+            const boys = sorted.filter(s => s.type !== 'girls');
+            const girls = sorted.filter(s => s.type === 'girls');
+
+            return (
+                <div className="h-[100dvh] w-full flex flex-col bg-orange-50 animate-fadeIn">
+                    <div className="bg-white p-4 shadow-sm border-b-2 border-orange-200 flex justify-between items-center z-10 flex-shrink-0">
+                        <div className="flex gap-4 items-center">
+                            <h2 className="font-black text-xl lg:text-2xl text-orange-800 hidden sm:block">غرفة التحكم</h2>
+                            <div className="bg-gray-800 text-white px-4 py-1 rounded-lg font-mono tabular-nums text-lg lg:text-xl">{formatTime(timeLeft)}</div>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
+                            <button onClick={() => setAdminTab('dashboard')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='dashboard'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>التحكم والنتائج</button>
+                            <button onClick={() => setAdminTab('preview')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='preview'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>فحص الشبكة</button>
+                            <button onClick={() => setAdminTab('questions')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='questions'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>الأسئلة</button>
+                            <button onClick={() => setAdminTab('schools')} className={`px-4 py-2 rounded-lg font-bold transition whitespace-nowrap ${adminTab==='schools'?'bg-orange-600 text-white shadow-md':'bg-gray-100 hover:bg-gray-200'}`}>المدارس</button>
+                            <button onClick={() => setGameState('welcome')} className="px-4 py-2 bg-red-100 text-red-700 rounded-lg font-bold transition active:scale-95 whitespace-nowrap">خروج</button>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto p-4 lg:p-6 custom-scrollbar">
+                        {adminTab === 'dashboard' && (
+                            <div className="flex flex-col gap-6 lg:gap-8 h-full">
+                                <div className="bg-white p-6 lg:p-8 rounded-[2rem] shadow-xl flex flex-col items-center justify-center gap-6 border-b-8 border-orange-100">
+                                    <h3 className="text-2xl lg:text-3xl font-black text-gray-800">{gameConfig.isLocked ? "المسابقة مقفلة" : "المسابقة جارية الآن"}</h3>
+                                    <div className="flex flex-wrap justify-center gap-4">
+                                        <button onClick={actions.startGame} className="bg-green-600 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-bold text-lg lg:text-xl shadow-xl hover:bg-green-700 transform hover:scale-105 transition active:scale-95">بدء المسابقة</button>
+                                        <button onClick={actions.resetGameStatus} className="bg-red-600 text-white px-8 lg:px-10 py-4 lg:py-5 rounded-2xl lg:rounded-3xl font-bold text-lg lg:text-xl shadow-xl hover:bg-red-700 transform hover:scale-105 transition active:scale-95">إيقاف المسابقة</button>
+                                    </div>
+                                    <div className="flex flex-wrap justify-center gap-4 mt-2">
+                                        <button onClick={actions.resetAllSchools} className="text-orange-600 font-bold hover:underline">تصفير النتائج</button>
+                                        <button onClick={actions.createNewCompetition} className="text-red-500 font-bold hover:underline border-r-2 border-gray-200 pr-4">مسابقة جديدة (حذف الكل)</button>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:gap-8 flex-1 pb-10">
+                                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col border-t-8 border-blue-500">
+                                        <div className="p-4 bg-blue-50 text-center font-black text-xl text-blue-800 border-b">نتائج الذكور</div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                                            {boys.length === 0 && <p className="text-center text-gray-400 py-10 italic font-bold">لا توجد نتائج</p>}
+                                            {boys.map((s, i) => (
+                                                <div key={s.id} className="flex justify-between items-center p-4 border-2 border-blue-50 rounded-2xl shadow-sm">
+                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-base lg:text-lg">{s.name}</span></div>
+                                                    <div className="text-left"><span className="text-2xl lg:text-3xl font-black text-blue-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                    <div className="bg-white rounded-3xl shadow-xl overflow-hidden flex flex-col border-t-8 border-pink-500">
+                                        <div className="p-4 bg-pink-50 text-center font-black text-xl text-pink-800 border-b">نتائج الإناث</div>
+                                        <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                                            {girls.length === 0 && <p className="text-center text-gray-400 py-10 italic font-bold">لا توجد نتائج</p>}
+                                            {girls.map((s, i) => (
+                                                <div key={s.id} className="flex justify-between items-center p-4 border-2 border-pink-50 rounded-2xl shadow-sm">
+                                                    <div className="flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-pink-100 text-pink-600 flex items-center justify-center font-bold">{i+1}</span><span className="font-bold text-base lg:text-lg">{s.name}</span></div>
+                                                    <div className="text-left"><span className="text-2xl lg:text-3xl font-black text-pink-600 tabular-nums">{s.score}</span>{s.finishTime && <div className="text-[10px] text-green-600 font-bold">أنهى في {s.finishTime}</div>}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {adminTab === 'preview' && (
+                            <div className="flex flex-col h-full bg-white p-6 rounded-[2rem] shadow-xl overflow-hidden animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 border-b pb-4">
+                                    <div className="flex flex-col">
+                                        <h3 className="font-black text-xl lg:text-2xl text-orange-800">معاينة استيعاب الشبكة</h3>
+                                        <span className="text-sm text-gray-400 font-bold">الحجم الحالي: {previewGridSize}×{previewGridSize}</span>
+                                    </div>
+                                    <button onClick={handleVerifyGrid} className="w-full sm:w-auto bg-indigo-600 text-white px-8 py-3 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg flex items-center justify-center gap-2 active:scale-95"><i className="fas fa-random"></i> تجربة التوليد / خلط</button>
+                                </div>
+                                <div className="flex flex-col lg:flex-row gap-6 lg:gap-8 flex-1 overflow-hidden">
+                                    <div className="lg:w-1/3 space-y-4">
+                                        <div className="bg-orange-50 p-6 rounded-2xl border-2 border-orange-100 lg:h-full">
+                                            <h4 className="font-black text-orange-800 mb-4 border-b border-orange-200 pb-2">تقرير الفحص</h4>
+                                            <div className="space-y-4 font-bold">
+                                                <div className="flex justify-between"><span>الأسئلة في البنك:</span><span className="text-indigo-600">{questions.length}</span></div>
+                                                {previewGrid && (
+                                                    <>
+                                                        <div className="flex justify-between"><span>تم تضمينها:</span><span className="text-green-600">{questions.length - missingWords.length}</span></div>
+                                                        <div className="flex justify-between"><span>لم تجد مكاناً:</span><span className="text-red-600">{missingWords.length}</span></div>
+                                                        {missingWords.length > 0 && (
+                                                            <div className="mt-4 p-4 bg-red-50 rounded-xl border border-red-100 animate-fadeIn">
+                                                                <p className="text-xs text-red-700 mb-2 font-black">المرفوضة (طويلة أو متداخلة):</p>
+                                                                <ul className="text-xs list-disc list-inside mb-4 max-h-32 overflow-y-auto custom-scrollbar">{missingWords.map((w,i)=><li key={i}>{w}</li>)}</ul>
+                                                                <button onClick={handleDeleteMissingQuestions} className="w-full bg-red-600 text-white py-2 rounded-lg text-xs font-bold hover:bg-red-700 shadow-md transition active:scale-95">حذف المرفوضة فوراً</button>
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="lg:w-2/3 flex items-center justify-center bg-gray-50 rounded-[2rem] p-2 lg:p-4 border-2 border-dashed border-gray-200 relative overflow-hidden">
+                                        {previewGrid ? (
+                                            <div className="grid gap-[1px] lg:gap-px bg-orange-200 p-1.5 rounded-xl shadow-inner border-4 border-orange-400" 
+                                                 style={{ 
+                                                    gridTemplateColumns: `repeat(${previewGridSize}, minmax(0, 1fr))`,
+                                                    gridTemplateRows: `repeat(${previewGridSize}, minmax(0, 1fr))`,
+                                                    width: 'min(100%, 500px)',
+                                                    aspectRatio: '1/1'
+                                                 }}>
+                                                {previewGrid.map((cell, i) => (
+                                                    <div key={i} className={`flex items-center justify-center bg-white font-black overflow-hidden rounded-sm ${cell.char && !cell.isRandom ? 'text-orange-600 bg-orange-50' : 'text-gray-300'}`}
+                                                         style={{ fontSize: `clamp(6px, calc(35vmin / ${previewGridSize}), 18px)`, lineHeight: 1 }}>
+                                                        {cell.char}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-gray-300 flex flex-col items-center gap-4 text-center">
+                                                <i className="fas fa-th text-5xl lg:text-7xl opacity-20"></i>
+                                                <p className="font-bold px-4">اضغط على زر التوليد في الأعلى للبدء بالفحص والتأكد من استيعاب الشبكة للكلمات.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {adminTab === 'questions' && (
+                            <div className="bg-white p-6 lg:p-8 rounded-3xl shadow-xl h-full flex flex-col animate-fadeIn">
+                                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                                    <h3 className="font-black text-xl lg:text-2xl text-gray-800">بنك الأسئلة ({questions.length})</h3>
+                                    <div className="flex gap-2 w-full sm:w-auto">
+                                        <button onClick={() => importState.setImportModal(true)} className="flex-1 sm:flex-none bg-green-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-green-700 transition">استيراد</button>
+                                        <button onClick={actions.deleteAllQuestionsFromDB} className="flex-1 sm:flex-none bg-red-50 text-red-600 px-6 py-2 rounded-xl font-bold hover:bg-red-100 transition">مسح الكل</button>
+                                    </div>
+                                </div>
+                                <div className="flex-1 overflow-y-auto custom-scrollbar border-2 border-gray-50 rounded-2xl">
+                                    {questions.map((q, i) => (
+                                        <div key={q.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-gray-50 transition group">
+                                            <span className="text-base lg:text-lg"><b>{i+1}.</b> {q.question} <span className="text-green-600 font-bold block sm:inline mt-1 sm:mt-0 sm:mr-2">({q.answer})</span></span>
+                                            <button onClick={() => actions.deleteQuestionFromDB(q.id)} className="text-red-300 hover:text-red-600 p-2 transition opacity-100 lg:opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {adminTab === 'schools' && (
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 animate-fadeIn h-full overflow-y-auto custom-scrollbar pb-10">
+                                <div className="bg-white p-6 lg:p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col h-fit">
+                                    <h3 className="font-black text-xl mb-6 border-b pb-4 text-orange-800">تسجيل مدرسة</h3>
+                                    <div className="space-y-4 lg:space-y-5">
+                                        <input type="text" placeholder="اسم المدرسة" value={newSchoolState.newS.name} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, name: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl outline-none focus:border-orange-500" />
+                                        <input type="text" placeholder="كلمة المرور" value={newSchoolState.newS.pass} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, pass: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl outline-none focus:border-orange-500" />
+                                        <select value={newSchoolState.newS.type} onChange={e=>newSchoolState.setNewS({...newSchoolState.newS, type: e.target.value})} className="w-full p-3 border-2 border-gray-100 rounded-xl bg-white font-bold">
+                                            <option value="boys">ذكور</option>
+                                            <option value="girls">إناث</option>
+                                        </select>
+                                        <button onClick={() => { actions.addSchoolToDB(newSchoolState.newS.name, newSchoolState.newS.pass, newSchoolState.newS.type); newSchoolState.setNewS({name:'', pass:'', type:'boys'}); }} className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg active:scale-95">حفظ المدرسة</button>
+                                    </div>
+                                </div>
+                                <div className="lg:col-span-2 bg-white p-6 lg:p-8 rounded-3xl shadow-xl border-2 border-gray-50 flex flex-col overflow-hidden min-h-[400px] h-full">
+                                    <div className="flex justify-between items-center mb-6">
+                                        <h3 className="font-black text-xl text-gray-800">المدارس المسجلة ({schools.length})</h3>
+                                        <button onClick={actions.deleteAllSchoolsFromDB} className="text-red-500 text-sm font-bold hover:underline">حذف جميع المدارس</button>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto custom-scrollbar border-2 border-gray-50 rounded-2xl">
+                                        {schools.map(s => (
+                                            <div key={s.id} className="p-4 border-b last:border-0 flex justify-between items-center hover:bg-gray-50 group">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-lg">{s.name} <span className={`text-xs px-2 py-0.5 rounded-full mr-2 ${s.type==='girls'?'bg-pink-100 text-pink-700':'bg-blue-100 text-blue-700'}`}>{s.type === 'girls' ? 'إناث' : 'ذكور'}</span></span>
+                                                    <span className="text-sm text-gray-400 font-bold mt-1">كلمة السر: <span className="tabular-nums text-gray-600">{s.password}</span></span>
+                                                </div>
+                                                <button onClick={() => actions.deleteSchoolFromDB(s.id)} className="text-red-200 hover:text-red-500 p-3 transition opacity-100 lg:opacity-0 group-hover:opacity-100"><i className="fas fa-trash"></i></button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {importState.importModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+                            <div className="bg-white w-full max-w-4xl p-6 lg:p-8 rounded-[2rem] shadow-2xl flex flex-col gap-4 lg:gap-6 animate-scaleIn">
+                                <h3 className="text-xl lg:text-2xl font-black text-center">استيراد من Excel</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 flex-1 min-h-[250px] lg:min-h-[300px]">
+                                    <div className="flex flex-col"><label className="font-bold text-sm mb-2 text-orange-600">قائمة الأسئلة</label><textarea value={importState.textQ} onChange={e=>importState.setTextQ(e.target.value)} className="flex-1 p-4 border rounded-2xl bg-gray-50 resize-none font-mono text-sm focus:border-orange-500 outline-none" placeholder="انسخ عمود الأسئلة هنا..."></textarea></div>
+                                    <div className="flex flex-col"><label className="font-bold text-sm mb-2 text-green-600">قائمة الأجوبة</label><textarea value={importState.textA} onChange={e=>importState.setTextA(e.target.value)} className="flex-1 p-4 border rounded-2xl bg-gray-50 resize-none font-mono text-sm focus:border-green-500 outline-none" placeholder="انسخ عمود الأجوبة هنا..."></textarea></div>
+                                </div>
+                                <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 pt-4">
+                                    <button onClick={importState.handleImport} className="w-full sm:w-2/3 bg-orange-600 text-white py-3 lg:py-4 rounded-2xl font-bold text-lg hover:bg-orange-700 transition shadow-lg active:scale-95">بدء الاستيراد</button>
+                                    <button onClick={() => importState.setImportModal(false)} className="w-full sm:w-1/3 bg-gray-200 text-gray-600 py-3 lg:py-4 rounded-2xl font-bold text-lg hover:bg-gray-300 transition active:scale-95">إلغاء</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // --- نقطة التجميع الرئيسية للتطبيق ---
+        function App() {
+            const [user, setUser] = useState(null);
+            const [gameState, setGameState] = useState('loading'); 
+            const [questions, setQuestions] = useState([]);
+            const [schools, setSchools] = useState([]);
+            const [gameConfig, setGameConfig] = useState({ isLocked: true, startTime: null });
+            const [currentSchoolId, setCurrentSchoolId] = useState(null);
+            const [grid, setGrid] = useState([]);
+            const [gridSize, setGridSize] = useState(12);
+            const [solvedQuestions, setSolvedQuestions] = useState([]);
+            const [solvedCells, setSolvedCells] = useState([]);
+            const [selection, setSelection] = useState({ start: null, current: null, active: false });
+            const [score, setScore] = useState(0);
+            const [timeLeft, setTimeLeft] = useState(null);
+            const [startTimeStamp, setStartTimeStamp] = useState(null);
+            const [showPasswordModal, setShowPasswordModal] = useState(false);
+            const [passwordInput, setPasswordInput] = useState('');
+            const [showExitConfirm, setShowExitConfirm] = useState(false);
+            const [isPracticeMode, setIsPracticeMode] = useState(false);
+            const [adminTab, setAdminTab] = useState('dashboard');
+            
+            const [importModal, setImportModal] = useState(false);
+            const [textQ, setTextQ] = useState('');
+            const [textA, setTextA] = useState('');
+            const [newS, setNewS] = useState({ name: '', pass: '', type: 'boys' });
+
+            // الأسئلة "الفعلية" لهذه الجولة: فقط الأسئلة التي فعلاً حروفها موجودة داخل الشبكة الحالية.
+            // بعض الكلمات الطويلة قد لا تجد مكاناً أثناء توليد الشبكة (رغم محاولات التوليد المتعددة)،
+            // فبدون هذا الفلتر تبقى تلك الأسئلة ظاهرة في القائمة الجانبية بدون حروف لها في الشبكة أبداً،
+            // وتمنع المدرسة من إكمال المسابقة نهائياً. نحسبها من "wordId" المخزّن فعلياً في كل خلية بالشبكة.
+            const activeQuestions = useMemo(() => {
+                if (isPracticeMode) return TRAINING_QUESTIONS;
+                if (!grid || grid.length === 0) return questions;
+                const placedIds = new Set(grid.filter(c => c.wordId).map(c => c.wordId));
+                const filtered = questions.filter(q => placedIds.has(q.id));
+                return filtered.length > 0 ? filtered : questions;
+            }, [grid, questions, isPracticeMode]);
+
+            useEffect(() => {
+                const unsub = auth.onAuthStateChanged((u) => {
+                    if (u) { 
+                        setUser(u); 
+                        if (gameState === 'loading') setGameState('welcome'); 
+                    } else { 
+                        auth.signInAnonymously().catch(e => console.error(e)); 
+                    }
+                });
+                return () => unsub();
+            }, []);
+
+            useEffect(() => {
+                if (!user) return; 
+                const basePath = `artifacts/${appId}/public/data`;
+                const unsubConfig = db.collection(basePath + '/game_config').doc('main').onSnapshot(doc => { 
+                    if (doc.exists) setGameConfig(doc.data()); 
+                });
+                const unsubQ = db.collection(basePath + '/questions').onSnapshot(s => { 
+                    setQuestions(s.docs.map(d => ({id:d.id, ...d.data()}))); 
+                });
+                const unsubS = db.collection(basePath + '/schools').onSnapshot(s => setSchools(s.docs.map(d => ({id:d.id, ...d.data()}))));
+                return () => { unsubQ(); unsubS(); unsubConfig(); };
+            }, [user]);
+
+            useEffect(() => {
+                if (gameConfig.startTime) {
+                    const timer = setInterval(() => {
+                        const rem = Math.max(0, COMPETITION_DURATION_MS - (Date.now() - gameConfig.startTime));
+                        setTimeLeft(rem);
+                        if (rem === 0 && !isPracticeMode && gameState === 'playing') setGameState('result');
+                    }, 1000);
+                    return () => clearInterval(timer);
+                } else setTimeLeft(null);
+            }, [gameConfig.startTime, gameState, isPracticeMode]);
+
+            const startGame = () => db.collection(`artifacts/${appId}/public/data/game_config`).doc('main').update({ isLocked: false, startTime: Date.now() });
+            const resetGameStatus = () => db.collection(`artifacts/${appId}/public/data/game_config`).doc('main').update({ isLocked: true, startTime: null });
+            const deleteQuestionFromDB = (id) => getCollection('questions').doc(id).delete();
+            const deleteAllQuestionsFromDB = async () => { if(confirm("حذف كل الأسئلة؟")){ const b=db.batch(); questions.forEach(q=>b.delete(getCollection('questions').doc(q.id))); await b.commit(); } };
+            const addSchoolToDB = (n, p, t) => getCollection('schools').add({ name: n, password: p, type: t, score: 0, solvedCount: 0, completed: false, finishTime: null, finishTimeMs: null, grid: null, gridSize: null, solvedQuestions: [], playStartTime: null });
+            const deleteSchoolFromDB = (id) => getCollection('schools').doc(id).delete();
+            // تصفير النتائج يمسح أيضاً الشبكة المحفوظة وتقدّم كل مدرسة، حتى تبدأ كل مدرسة بشبكة جديدة في المسابقة التالية
+            const resetAllSchools = async () => { if(confirm("تصفير جميع نتائج المدارس؟")){ const b=db.batch(); schools.forEach(s=>b.update(getCollection('schools').doc(s.id), {score:0, solvedCount:0, completed:false, finishTime:null, finishTimeMs:null, grid:null, gridSize:null, solvedQuestions:[], playStartTime:null})); await b.commit(); } };
+            const createNewCompetition = async () => { if(confirm("تصفير شامل؟ سيتم مسح الأسئلة والمدارس!")){ const b=db.batch(); questions.forEach(q=>b.delete(getCollection('questions').doc(q.id))); schools.forEach(s=>b.delete(getCollection('schools').doc(s.id))); b.update(db.collection(`artifacts/${appId}/public/data/game_config`).doc('main'), { isLocked: true, startTime: null }); await b.commit(); } };
+
+            const handleStartPlaying = (sId, practice = false) => {
+                setCurrentSchoolId(sId);
+                setIsPracticeMode(practice);
+                setSelection({start:null, current:null, active:false});
+
+                // وضع التدريب: يبدأ من الصفر دائماً، لا يُحفظ في قاعدة البيانات
+                if (practice) {
+                    setGameState('playing');
+                    setStartTimeStamp(Date.now());
+                    const size = calculateGridSize(TRAINING_QUESTIONS);
+                    setGridSize(size);
+                    const res = generateBestGrid(TRAINING_QUESTIONS, size);
+                    setGrid(res.grid);
+                    setSolvedQuestions([]); setSolvedCells([]); setScore(0);
+                    return;
+                }
+
+                const schoolDoc = schools.find(s => s.id === sId);
+
+                // المدرسة أنهت المسابقة مسبقاً: نعرض لها شاشة النتيجة النهائية مباشرة بدل إعادة اللعب من جديد
+                if (schoolDoc && schoolDoc.completed) {
+                    setScore(schoolDoc.score || 0);
+                    setGameState('result');
+                    return;
+                }
+
+                // المدرسة لديها تقدم محفوظ (دخلت وخرجت سابقاً لأي سبب): نستكمل بنفس الشبكة ونفس الأسئلة المحلولة والنقاط
+                if (schoolDoc && schoolDoc.grid && schoolDoc.gridSize) {
+                    const savedSolved = schoolDoc.solvedQuestions || [];
+                    const restoredGrid = schoolDoc.grid.map((c, idx) => ({
+                        char: c.char,
+                        id: c.wordId ? `cell-${idx}` : `rand-${idx}`,
+                        wordId: c.wordId || undefined,
+                        isRandom: !c.wordId
+                    }));
+                    const restoredCells = restoredGrid.reduce((acc, c, idx) => {
+                        if (c.wordId && savedSolved.includes(c.wordId)) acc.push(idx);
+                        return acc;
+                    }, []);
+                    setGridSize(schoolDoc.gridSize);
+                    setGrid(restoredGrid);
+                    setSolvedQuestions(savedSolved);
+                    setSolvedCells(restoredCells);
+                    setScore(schoolDoc.score || 0);
+                    setStartTimeStamp(schoolDoc.playStartTime || Date.now());
+                    setGameState('playing');
+                    return;
+                }
+
+                // أول دخول لهذه المدرسة في هذه المسابقة: نولّد شبكة جديدة ونحفظها فوراً حتى يمكن استكمالها لاحقاً
+                const now = Date.now();
+                setGameState('playing');
+                setStartTimeStamp(now);
+                const size = calculateGridSize(questions);
+                setGridSize(size);
+                const res = generateBestGrid(questions, size);
+                setGrid(res.grid);
+                setSolvedQuestions([]); setSolvedCells([]); setScore(0);
+
+                const gridToSave = res.grid.map(c => ({ char: c.char, wordId: c.wordId || null }));
+                getCollection('schools').doc(sId).update({
+                    grid: gridToSave,
+                    gridSize: size,
+                    playStartTime: now,
+                    solvedQuestions: []
+                });
+            };
+
+            const getLineIndices = (start, end) => {
+                const sx=start%gridSize, sy=Math.floor(start/gridSize), ex=end%gridSize, ey=Math.floor(end/gridSize), dx=ex-sx, dy=ey-sy, steps=Math.max(Math.abs(dx),Math.abs(dy));
+                if(steps===0) return [start];
+                if(sx!==ex && sy!==ey && Math.abs(dx)!==Math.abs(dy)) return [];
+                const arr=[]; for(let i=0; i<=steps; i++) arr.push(Math.round(sy+dy/steps*i)*gridSize+Math.round(sx+dx/steps*i));
+                return arr;
+            };
+
+            const handleMouseUp = () => {
+                if(!selection.active) return;
+                const indices = getLineIndices(selection.start, selection.current);
+                const word = indices.map(i=>grid[i].char).join('');
+                const rev = word.split('').reverse().join('');
+                const activeQs = activeQuestions;
+                const q = activeQs.find(q=>{ const a=q.answer.replace(/\s/g,''); return (a===word||a===rev) && !solvedQuestions.includes(q.id) });
+                if(q){
+                    const newSolved = [...solvedQuestions, q.id];
+                    const newScore = score + 10;
+                    setSolvedQuestions(newSolved);
+                    setSolvedCells(p=>[...p, ...indices]);
+                    setScore(newScore);
+                    
+                    if(!isPracticeMode && currentSchoolId) {
+                        const isCompleted = newSolved.length === activeQs.length;
+                        const updates = { score: newScore, solvedCount: newSolved.length, completed: isCompleted, solvedQuestions: newSolved };
+                        if (isCompleted) {
+                            // نعتمد على وقت بدء اللعب الفعلي لهذه المدرسة، وإن فُقد (بسبب تحديث الصفحة مثلاً)
+                            // نرجع لوقت انطلاق المسابقة العام حتى لا يتوقف تسجيل الوقت أو يخرج بقيمة خاطئة
+                            const startRef = startTimeStamp || gameConfig.startTime || Date.now();
+                            const durationMs = Math.max(0, Date.now() - startRef);
+                            updates.finishTimeMs = durationMs; // بالميلي ثانية لدقة كاملة عند فرز الترتيب
+                            updates.finishTime = formatTime(durationMs); // نص معروض دقيق حتى الثانية (دقيقة:ثانية)
+                        }
+                        getCollection('schools').doc(currentSchoolId).update(updates);
+                    }
+                    if(newSolved.length === activeQs.length) setTimeout(()=>setGameState('result'), 1500);
+                }
+                setSelection({start:null, current:null, active:false});
+            };
+
+            const isSelected = (idx) => selection.active && getLineIndices(selection.start, selection.current).includes(idx);
+
+            if (gameState === 'loading') return <LoadingScreen />;
+
+            return (
+                <div dir="rtl" className="h-[100dvh] flex flex-col overflow-hidden bg-orange-50 no-select relative w-full">
+                    {gameState === 'welcome' && (
+                        <WelcomeScreen setGameState={setGameState} setShowPasswordModal={setShowPasswordModal} />
+                    )}
+
+                    {gameState === 'select_school' && (
+                        <SelectSchoolScreen schools={schools} gameConfig={gameConfig} handleStartPlaying={handleStartPlaying} setGameState={setGameState} />
+                    )}
+
+                    {(gameState === 'admin' || gameState === 'leaderboard') && (
+                        <AdminScreen 
+                            questions={questions} schools={schools} gameConfig={gameConfig} timeLeft={timeLeft} adminTab={adminTab} setAdminTab={setAdminTab} setGameState={setGameState} 
+                            actions={{startGame, resetGameStatus, deleteQuestionFromDB, deleteAllQuestionsFromDB, addSchoolToDB, deleteSchoolFromDB, resetAllSchools, createNewCompetition}}
+                            importState={{importModal, setImportModal, textQ, setTextQ, textA, setTextA, handleImport: async () => {
+                                const qs = textQ.trim().split('\n'); const as = textA.trim().split('\n');
+                                if(qs.length !== as.length) return alert("العدد غير متطابق!");
+                                const batch = db.batch();
+                                qs.forEach((q, i) => batch.set(getCollection('questions').doc(), { question: q.trim(), answer: as[i].trim(), createdAt: Date.now() }));
+                                await batch.commit(); setImportModal(false); setTextQ(''); setTextA('');
+                            }}}
+                            newSchoolState={{newS, setNewS}}
+                        />
+                    )}
+
+                    {gameState === 'result' && (
+                        <ResultScreen schools={schools} currentSchoolId={currentSchoolId} score={score} setGameState={setGameState} isPracticeMode={isPracticeMode} />
+                    )}
+
+                    {gameState === 'playing' && (
+                        <div className="h-full w-full flex flex-col" onMouseUp={handleMouseUp} onTouchEnd={handleMouseUp}>
+                            <header className={`p-4 text-white flex justify-between items-center shadow-xl h-[70px] z-20 shrink-0 ${isPracticeMode ? 'bg-indigo-600 border-b-4 border-indigo-800':'bg-orange-600 border-b-4 border-orange-800'}`}>
+                                <div className="flex items-center gap-2 lg:gap-4">
+                                    <button onClick={(e)=>{ e.stopPropagation(); setShowExitConfirm(true); }} className="w-10 h-10 bg-black/20 rounded-xl flex items-center justify-center active:scale-90 transition shadow-inner shrink-0"><i className="fas fa-home text-lg"></i></button>
+                                    <div className="flex flex-col">
+                                        <span className="font-black text-lg lg:text-xl truncate max-w-[150px] lg:max-w-[250px]">{isPracticeMode ? "وضع التدريب": schools.find(s=>s.id===currentSchoolId)?.name}</span>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 lg:gap-6 items-center shrink-0">
+                                    {!isPracticeMode && <div className="bg-black/20 px-3 lg:px-5 py-1 lg:py-1.5 rounded-xl lg:rounded-2xl tabular-nums font-black text-lg lg:text-2xl shadow-inner border border-white/10 hidden sm:block">{formatTime(timeLeft)}</div>}
+                                    <div className="bg-white text-orange-800 px-4 lg:px-6 py-1 lg:py-1.5 rounded-xl lg:rounded-2xl font-black text-lg lg:text-xl shadow-lg tabular-nums">{score} <span className="text-xs text-gray-400 font-bold hidden sm:inline-block">نقطة</span></div>
+                                </div>
+                            </header>
+                            
+                            <main className="game-main-layout flex-col lg:flex-row">
+                                <div className="w-full lg:w-1/3 h-[30%] lg:h-full bg-white border-b-4 lg:border-b-0 lg:border-l-4 border-orange-100 p-4 lg:p-6 overflow-y-auto custom-scrollbar shadow-xl z-10 flex flex-col shrink-0">
+                                    <h3 className="font-black text-orange-800 mb-3 lg:mb-6 border-b-2 pb-2 lg:pb-3 flex items-center gap-2 lg:gap-3 text-lg lg:text-2xl shrink-0"><i className="fas fa-tasks text-orange-400"></i> قائمة الأسئلة</h3>
+                                    <div className="space-y-2 lg:space-y-4 pb-2 lg:pb-20 overflow-y-auto custom-scrollbar pr-2">
+                                        {activeQuestions.map((q, i) => (
+                                            <div key={q.id} className={`p-3 lg:p-4 rounded-xl lg:rounded-2xl border-2 transition-all duration-300 ${solvedQuestions.includes(q.id)?'bg-green-50 border-green-200 opacity-60 shadow-none':'bg-white border-orange-50 shadow-sm'}`}>
+                                                <p className={`text-sm lg:text-lg font-bold leading-tight lg:leading-relaxed ${solvedQuestions.includes(q.id)?'line-through text-green-700 font-normal':'text-gray-700'}`}>
+                                                    <span className="text-orange-400 ml-1 lg:ml-2 font-black">#{i+1}</span> {q.question}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                                
+                                <div className="grid-zone w-full lg:w-2/3 h-[70%] lg:h-full pb-6 lg:pb-0">
+                                    <div className="responsive-grid-container" 
+                                         style={{ 
+                                             gridTemplateColumns: `repeat(${gridSize}, minmax(0, 1fr))`,
+                                             gridTemplateRows: `repeat(${gridSize}, minmax(0, 1fr))` 
+                                         }}>
+                                        {grid.map((cell, idx) => (
+                                            <div key={idx} onMouseDown={()=>setSelection({start:idx, current:idx, active:true})} onMouseEnter={()=>selection.active && setSelection(p=>({...p, current:idx}))} onTouchStart={(e)=>{e.preventDefault(); setSelection({start:idx, current:idx, active:true});}}
+                                                 onTouchMove={(e)=>{ e.preventDefault(); const touch = e.touches[0]; const el = document.elementFromPoint(touch.clientX, touch.clientY); if (el && el.dataset.idx) setSelection(p=>({...p, current:parseInt(el.dataset.idx)})); }}
+                                                 data-idx={idx} 
+                                                 className={`letter-cell shadow-sm ${isSelected(idx) ? 'bg-orange-600 text-white scale-110 z-10 ring-2 ring-white shadow-xl' : solvedCells.includes(idx) ? 'bg-green-500 text-white opacity-90 scale-95' : 'bg-white text-gray-800 hover:bg-orange-50'}`}
+                                                 style={{ fontSize: `clamp(8px, calc(50vmin / ${gridSize}), 32px)` }}>
+                                                {cell.char}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </main>
+                        </div>
+                    )}
+
+                    {showPasswordModal && (
+                        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-fadeIn">
+                            <div className="bg-white p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] shadow-2xl w-full max-w-xs animate-scaleIn border-b-8 border-orange-500">
+                                <h3 className="font-black text-xl lg:text-2xl mb-6 text-center text-gray-800">دخول الإدارة</h3>
+                                <input type="password" value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} autoFocus placeholder="كلمة المرور" onKeyDown={(e)=>{if(e.key==='Enter' && passwordInput === ADMIN_PASSWORD){setGameState('admin'); setShowPasswordModal(false); setPasswordInput('');} else if(e.key==='Enter') alert('خطأ');}} className="w-full p-4 border-2 border-gray-100 rounded-xl lg:rounded-2xl text-center mb-6 focus:border-orange-400 outline-none text-xl transition-all" />
+                                <div className="flex flex-col gap-2">
+                                    <button onClick={() => { if(passwordInput === ADMIN_PASSWORD) { setGameState('admin'); setShowPasswordModal(false); setPasswordInput(''); } else alert('خطأ'); }} className="w-full bg-orange-600 text-white py-3 rounded-xl font-bold hover:bg-orange-700 transition shadow-md active:scale-95">دخول</button>
+                                    <button onClick={() => {setShowPasswordModal(false); setPasswordInput('');}} className="w-full text-gray-400 font-bold hover:text-gray-600 transition p-2">إلغاء</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {showExitConfirm && (
+                        <div className="fixed inset-0 bg-black/70 z-[60] flex items-center justify-center p-4 animate-fadeIn backdrop-blur-md">
+                            <div className="bg-white p-8 lg:p-10 rounded-[2rem] lg:rounded-[3rem] shadow-2xl max-w-sm w-full text-center border-t-8 border-red-500 animate-scaleIn">
+                                <div className="text-red-500 text-6xl mb-6 flex justify-center"><i className="fas fa-exclamation-circle"></i></div>
+                                <h3 className="text-2xl font-black text-gray-800 mb-2">تنبيه بالخروج</h3>
+                                <p className="text-gray-500 mb-8 font-medium">هل أنت متأكد من العودة للرئيسية؟ سيتم فقدان تقدمك الحالي.</p>
+                                <div className="flex gap-4">
+                                    <button onClick={()=>{ setGameState('welcome'); setShowExitConfirm(false); }} className="flex-1 bg-red-600 text-white py-3 lg:py-4 rounded-xl lg:rounded-2xl font-bold text-lg active:scale-95 transition shadow-lg text-center">خروج</button>
+                                    <button onClick={()=>setShowExitConfirm(false)} className="flex-1 bg-gray-100 text-gray-600 py-3 lg:py-4 rounded-xl lg:rounded-2xl font-bold text-lg active:scale-95 transition text-center">إلغاء</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {gameState !== 'playing' && <footer className="fixed bottom-0 w-full bg-white/60 backdrop-blur-sm p-1.5 text-center text-[10px] lg:text-xs text-gray-400 font-bold z-0 border-t border-orange-100">تصميم المسابقة: أ. عبدالله بن خلف الرواحي</footer>}
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
